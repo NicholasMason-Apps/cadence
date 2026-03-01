@@ -3,22 +3,19 @@
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# LANGUAGE DeriveGeneric #-}
 
-module GDK.Types where
+module GDK.Types (Config(..)
+                 , Renderable(..)
+                 , RenderLayers(..)
+                 , FPS
+                 , Time(..)) where
 
 import qualified SDL
 import Apecs
-import qualified SDL.Font as TTF
-import qualified Data.Map as Map
 import qualified Data.Vector as V
-import Language.Haskell.TH.Syntax
 import Data.Word (Word8)
 
 type FPS = Int
@@ -32,44 +29,32 @@ data Config = Config
         targetFPS :: FPS -- ^ Desired FPS for the game loop
     }
 
--- | Stores the SDL textures loaded in the game, mapped by their identifiers
-newtype TextureMap = TextureMap (Map.Map String SDL.Texture)
-instance Component TextureMap where type Storage TextureMap = Map TextureMap
-
--- | Stores the SDL fonts loaded in the game, mapped by their identifiers
-newtype FontMap = FontMap (Map.Map String TTF.Font)
-instance Component FontMap where type Storage FontMap = Map FontMap
-
-data Animation = Animation
-    { frameCount :: Int
-    -- ^ Total number of frames in the animation
-    , frameDuration :: Float 
-    -- ^ Duration of each frame in seconds
-    , currentFrame :: Int   
-    -- ^ Current frame index
-    , nextAnimation :: String 
-    -- ^ Identifier of the next animation texture to transition to after this one finishes
-    } deriving (Show, Eq)
-
 -- | Represents an entity that can be rendered, containing a reference to its texture and optional animation data
 data Renderable = Renderable
-    { textureRef :: String 
+    { textureRef :: String
     -- ^ Identifier for the texture to render
-    , animation :: Maybe Animation 
-    -- ^ Optional animation data for the renderable entity
+    , layer :: Int
+    -- ^ layer for draw order
+    , animationFrame :: Maybe Int
+    -- ^ Frame index for animations, if applicable
     } deriving (Eq, Show)
 
+newtype Time = Time Float deriving (Show, Eq, Num)
+instance Semigroup Time where
+    (Time t1) <> (Time t2) = Time (t1 + t2)
+instance Monoid Time where
+    mempty = Time 0
+instance Component Time where type Storage Time = Global Time
+
 {-|
-A queue of renderable entities, organised as a First-in-First-out (FIFO) structure where the first vector is drawn on the first layer, and each inner vector represents a batch of renderables to be drawn together
-
-Instead of using Apecs 'makeWorld' directly to create a world record, we wrap it such that additional components for GDK can be included in the world.
+A global component which stores in a Vector a 'Texture' for each render layer.
+The index of the vector corresponds to the render layer, so the texture at index 0 is the texture for render layer 0, and so on.
+Lower layers are drawn first, and therefore can appear behind higher layers.
+The texture for each layer is cleared at the start of each frame, and 'Renderables' are drawn onto the appropriate layer texture during the draw phase of the game loop.
 -}
-newtype RenderQueue = RenderQueue (V.Vector (V.Vector Renderable))
-instance Semigroup RenderQueue where
-    (RenderQueue q1) <> (RenderQueue q2) = RenderQueue (q1 V.++ q2)
-instance Monoid RenderQueue where
-    mempty = RenderQueue V.empty
-instance Component RenderQueue where type Storage RenderQueue = Global RenderQueue
-
-makeWorld' :: [Name] -> Q [Dec]
-makeWorld' cTypes = makeWorld "World" (cTypes ++ [''TextureMap, ''FontMap, ''RenderQueue])
+newtype RenderLayers = RenderLayers (V.Vector SDL.Texture)
+instance Semigroup RenderLayers where
+    (RenderLayers q1) <> (RenderLayers q2) = RenderLayers (q1 V.++ q2)
+instance Monoid RenderLayers where
+    mempty = RenderLayers V.empty
+instance Component RenderLayers where type Storage RenderLayers = Global RenderLayers

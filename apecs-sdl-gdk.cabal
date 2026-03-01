@@ -25,7 +25,9 @@ source-repository head
 
 library
   exposed-modules:
+      GDK.Font
       GDK.Systems
+      GDK.Texture
       GDK.Types
   other-modules:
       Paths_apecs_sdl_gdk
