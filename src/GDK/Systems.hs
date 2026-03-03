@@ -19,9 +19,13 @@ import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import System.Exit (exitSuccess)
 
-initialise :: Config -- ^ Game config
+initialise :: forall w.
+            (Set w IO Renderer
+            , Set w IO Window)
+           => w
+           -> Config -- ^ Game config
            -> IO (SDL.Window, SDL.Renderer) -- ^ Returns the created window and renderer contexts
-initialise config = do
+initialise world config = do
     SDL.initialize [SDL.InitVideo]
     TTF.initialize
     IMG.initialize []
@@ -31,20 +35,19 @@ initialise config = do
                                            SDL.windowMode = SDL.Windowed,
                                            SDL.windowResizable = False }
     window <- SDL.createWindow (T.pack title) windowConfig
+    runWith world (set global $ Window window)
 
     let rendererConfig = SDL.defaultRenderer { SDL.rendererType = SDL.AcceleratedVSyncRenderer,
                                                SDL.rendererTargetTexture = True }
     renderer <- SDL.createRenderer window (-1) rendererConfig
+    runWith world (set global $ Renderer renderer)
 
     return (window, renderer)
 
 run :: forall w. 
      (Has w IO Time
      , Has w IO TextureMap
-     , Has w IO Position
-     , Get w IO Renderable
-     , Set w IO Renderable
-     , Members w IO Renderable)
+     , Get w IO Renderable)
      => w -- ^ Initial world state
      -> SDL.Renderer -- ^ SDL renderer context
      -> SDL.Window -- ^ SDL window context
@@ -92,7 +95,7 @@ defaultConfig = Config
     }
 
 makeWorld' :: [Name] -> Q [Dec]
-makeWorld' cTypes = makeWorld "World" (cTypes ++ [''TextureMap, ''FontMap, ''Position, ''Time])
+makeWorld' cTypes = makeWorld "World" (cTypes ++ [''TextureMap, ''FontMap, ''Position, ''Time, ''Renderable, ''Renderer, ''Window])
 
 stepAnimations :: forall w. 
                 (Has w IO Time
@@ -103,20 +106,23 @@ stepAnimations :: forall w.
                 => Float 
                 -> System w ()
 stepAnimations dt = cmapM $ \r -> do
-    Time t <- get global
-    TextureMap m <- get global
-    let tex = textureRef r `Map.lookup` m
-    case tex of
-        Nothing -> return r
-        Just tex' -> case animation tex' of
-                Just a -> do
-                    let trigger = floor (t / frameSpeed a) /= floor ((t + dt) / frameSpeed a)
-                    if trigger then do
-                        let frame = fromMaybe 0 (animationFrame r)
-                            newFrame = (frame + 1) `mod` frameCount a
-                        if newFrame == 0 then
-                            return r { textureRef = next a, animationFrame = Just 0 }
-                        else
-                            return r { animationFrame = Just newFrame }
-                    else return r
+    case r of
+        RenderableTexture t -> do
+            Time t' <- get global
+            TextureMap m <- get global
+            let tex = textureRef t `Map.lookup` m
+            case tex of
                 Nothing -> return r
+                Just tex' -> case animation tex' of
+                        Just a -> do
+                            let trigger = floor (t' / frameSpeed a) /= floor ((t' + dt) / frameSpeed a)
+                            if trigger then do
+                                let frame = fromMaybe 0 (animationFrame t)
+                                    newFrame = (frame + 1) `mod` frameCount a
+                                if newFrame == 0 then
+                                    return $ RenderableTexture t { textureRef = next a, animationFrame = Just 0 }
+                                else
+                                    return $ RenderableTexture t { animationFrame = Just newFrame }
+                            else return r
+                        Nothing -> return r
+        _ -> return r

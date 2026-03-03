@@ -1,4 +1,6 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module GDK.Draw (draw, drawTexture, drawText) where
 
@@ -7,19 +9,49 @@ import qualified SDL.Font as TTF
 import Apecs
 import GDK.Types
 import GDK.Texture
-import GDK.Font (RenText(..))
+import GDK.Font (RenText(..), FontMap(..))
 import Control.Monad.IO.Class (MonadIO)
 import qualified Data.Vector as V
 import qualified Data.Text as T
+import qualified Data.Map as Map
 
 {-|
 Draw all 'Renderable' entities onto their appropriate layer.
 This function is the typical draw function to pass to 'run', however you are free to implement your own
 -}
-draw :: SDL.Renderer -> FPS -> System w ()
-draw renderer fps = return ()
-    let layers = V.empty :: V.Vector SDL.Texture
-    
+draw :: forall w.
+      (Has w IO TextureMap
+      , Get w IO Window
+      , Get w IO Renderable
+      , Get w IO Position
+      , Get w IO FontMap)
+      => SDL.Renderer
+      -> FPS
+      -> System w ()
+draw renderer fps = do
+    Window window <- get global
+    size <- SDL.get $ SDL.windowSize window
+    maxLayer <- cfold (\acc r -> case r of
+        RenderableTexture t -> max acc (GDK.Texture.layer t)
+        RenderableText t -> max acc (GDK.Font.layer t)) 0
+    layers <- V.replicateM maxLayer (SDL.createTexture renderer SDL.RGBA8888 SDL.TextureAccessTarget size)
+    TextureMap tm <- get global
+    FontMap fm <- get global
+    cmapM_ $ \(r, pos) -> case r of
+        RenderableTexture t -> case Map.lookup (textureRef t) tm of
+            Just td -> do
+                let layerTex = layers V.! GDK.Texture.layer t
+                SDL.rendererRenderTarget renderer SDL.$= Just layerTex
+                drawTexture renderer td pos (animationFrame t)
+            Nothing -> return () -- Texture not found, skip drawing
+        RenderableText t -> case Map.lookup (fontRef t) fm of
+            Just font -> do
+                let layerTex = layers V.! GDK.Font.layer t
+                SDL.rendererRenderTarget renderer SDL.$= Just layerTex
+                drawText renderer t font pos
+            Nothing -> return () -- Font not found, skip drawing
+    SDL.rendererRenderTarget renderer SDL.$= Nothing
+    V.mapM_ (\t -> SDL.copy renderer t Nothing Nothing) layers
 
 {-|
 Draw a 'Texture' given its 'TextureData' and 'Position'
