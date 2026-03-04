@@ -51,7 +51,9 @@ draw renderer fps = do
                 drawText renderer t font pos
             Nothing -> return () -- Font not found, skip drawing
     SDL.rendererRenderTarget renderer SDL.$= Nothing
-    V.mapM_ (\t -> SDL.copy renderer t Nothing Nothing) layers
+    V.mapM_ (\t -> do
+        SDL.copy renderer t Nothing Nothing
+        SDL.destroyTexture t) layers
 
 {-|
 Draw a 'Texture' given its 'TextureData' and 'Position'
