@@ -13,15 +13,21 @@ module GDK.Types (Config(..)
                  , Position(..)
                  , Time(..)
                  , Renderer(..)
-                 , Window(..)) where
+                 , Window(..)
+                 , TargetFPS(..)) where
 
 import qualified SDL
 import Apecs
 import Data.Word (Word8)
 import GDK.Texture (RenTexture, TextureMap (..))
 import GDK.Font (RenText)
+import GHC.TypeLits (Nat)
 
 type FPS = Int
+
+data TargetFPS = VSync
+               | Unlimited
+               | Limited Nat 
 
 -- | Configuration settings for the game upon initialisation
 data Config = Config
@@ -29,7 +35,7 @@ data Config = Config
         windowTitle :: String, -- ^ Title of the game window
         windowDimensions :: (Int, Int), -- ^ Width and height of the game window in pixels
         backgroundColor :: SDL.V4 Word8, -- ^ Background color of the game window as an RGBA value
-        targetFPS :: FPS -- ^ Desired FPS for the game loop
+        targetFPS :: TargetFPS -- ^ Desired FPS for the game loop
     }
 
 -- data Render r = Render r

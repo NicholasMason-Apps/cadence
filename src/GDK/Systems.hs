@@ -38,7 +38,10 @@ initialise world config = do
     window <- SDL.createWindow (T.pack title) windowConfig
     runWith world (set global $ Window $ Just window)
 
-    let rendererConfig = SDL.defaultRenderer { SDL.rendererType = SDL.AcceleratedVSyncRenderer,
+    let rendererType = case targetFPS config of
+            VSync -> SDL.AcceleratedVSyncRenderer
+            _ -> SDL.AcceleratedRenderer
+        rendererConfig = SDL.defaultRenderer { SDL.rendererType = rendererType,
                                                SDL.rendererTargetTexture = True }
     renderer <- SDL.createRenderer window (-1) rendererConfig
     runWith world (set global $ Renderer $ Just renderer)
@@ -78,7 +81,9 @@ run w r window c step eventHandler draw = do
             SDL.clear r
             runSystem (draw r (round avgFps)) w
             SDL.present r
-            SDL.delay $ floor ((1000 / fromIntegral (targetFPS c)) - elapsed)
+            case targetFPS c of
+                Limited fps -> SDL.delay $ floor ((1000 / fromIntegral fps) - elapsed)
+                _ -> return ()
             unless quit $ loop ticks perf tickAcc' (fpsAcc + 1)
     loop 0 0 0 0
     SDL.destroyRenderer r
@@ -93,7 +98,7 @@ defaultConfig = Config
     { windowTitle = "GDK Game"
     , windowDimensions = (800, 600)
     , backgroundColor = SDL.V4 0 0 0 255
-    , targetFPS = 60
+    , targetFPS = VSync
     }
 
 makeWorld' :: [Name] -> Q [Dec]
