@@ -64,8 +64,16 @@ instance Monoid Time where
     mempty = Time 0
 instance Component Time where type Storage Time = Global Time
 
-newtype Renderer = Renderer SDL.Renderer
+newtype Renderer = Renderer (Maybe SDL.Renderer)
+instance Semigroup Renderer where
+    (Renderer r1) <> (Renderer r2) = Renderer r1
+instance Monoid Renderer where
+    mempty = Renderer Nothing
 instance Component Renderer where type Storage Renderer = Global Renderer
 
-newtype Window = Window SDL.Window
+newtype Window = Window (Maybe SDL.Window)
+instance Semigroup Window where
+    (Window w1) <> (Window w2) = Window w1
+instance Monoid Window where
+    mempty = Window Nothing
 instance Component Window where type Storage Window = Global Window

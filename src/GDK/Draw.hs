@@ -14,6 +14,7 @@ import Control.Monad.IO.Class (MonadIO)
 import qualified Data.Vector as V
 import qualified Data.Text as T
 import qualified Data.Map as Map
+import Data.Maybe (fromMaybe)
 
 {-|
 Draw all 'Renderable' entities onto their appropriate layer.
@@ -29,7 +30,8 @@ draw :: forall w.
       -> FPS
       -> System w ()
 draw renderer fps = do
-    Window window <- get global
+    Window win <- get global
+    let window = fromMaybe (error "Window not initialised") win
     size <- SDL.get $ SDL.windowSize window
     maxLayer <- cfold (\acc r -> case r of
         RenderableTexture t -> max acc (GDK.Texture.layer t)

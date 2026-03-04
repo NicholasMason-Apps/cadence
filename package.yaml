@@ -29,6 +29,10 @@ dependencies:
 - containers
 - template-haskell
 - text
+- hspec
+- QuickCheck
+- HUnit
+- hspec-contrib
 
 ghc-options:
 - -Wall

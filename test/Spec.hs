@@ -1,2 +1,33 @@
+{-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeApplications           #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
+import Test.Hspec
+import Test.QuickCheck
+import GDK.Systems (initialise, run, makeWorld', defaultConfig)
+import Apecs
+import GDK.Types (Config(..), Renderable(..), Position(..), Time(..), Renderer(..), Window(..))
+import qualified SDL
+import qualified Data.Text as T
+
+makeWorld' []
+
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = hspec $ do
+    describe "GDK.Systems.initialise" $ do
+        it "initialises SDL and creates a window and renderer" $ do
+            let config = Config "Test Window" (800, 600) (SDL.V4 0 0 0 255) 60
+            w <- initWorld
+            (window, renderer) <- initialise w config
+            size <- SDL.get (SDL.windowSize window)
+            size `shouldBe` (SDL.V2 800 600)
+            title <- SDL.get (SDL.windowTitle window)
+            title `shouldBe` (T.pack "Test Window")
+            SDL.destroyRenderer renderer
+            SDL.destroyWindow window

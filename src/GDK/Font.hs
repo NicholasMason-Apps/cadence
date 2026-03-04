@@ -20,6 +20,7 @@ data RenText = RenText
     , layer :: Int
     } deriving (Show, Eq)
 
+-- | Load a font into the 'FontMap'
 loadFont :: forall w m. (Has w m FontMap, MonadIO m) 
          => FilePath
          -> String -- ^ Font identifier

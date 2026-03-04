@@ -19,6 +19,7 @@ import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import System.Exit (exitSuccess)
 
+-- | Initialise the SDL window and renderer
 initialise :: forall w.
             (Set w IO Renderer
             , Set w IO Window)
@@ -35,15 +36,16 @@ initialise world config = do
                                            SDL.windowMode = SDL.Windowed,
                                            SDL.windowResizable = False }
     window <- SDL.createWindow (T.pack title) windowConfig
-    runWith world (set global $ Window window)
+    runWith world (set global $ Window $ Just window)
 
     let rendererConfig = SDL.defaultRenderer { SDL.rendererType = SDL.AcceleratedVSyncRenderer,
                                                SDL.rendererTargetTexture = True }
     renderer <- SDL.createRenderer window (-1) rendererConfig
-    runWith world (set global $ Renderer renderer)
+    runWith world (set global $ Renderer $ Just renderer)
 
     return (window, renderer)
 
+-- | Main game loop
 run :: forall w. 
      (Has w IO Time
      , Has w IO TextureMap

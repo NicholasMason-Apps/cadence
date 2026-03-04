@@ -38,9 +38,13 @@ library
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      apecs
+      HUnit
+    , QuickCheck
+    , apecs
     , base >=4.7 && <5
     , containers
+    , hspec
+    , hspec-contrib
     , sdl2
     , sdl2-image
     , sdl2-ttf
@@ -59,10 +63,14 @@ executable apecs-sdl-gdk-exe
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      apecs
+      HUnit
+    , QuickCheck
+    , apecs
     , apecs-sdl-gdk
     , base >=4.7 && <5
     , containers
+    , hspec
+    , hspec-contrib
     , sdl2
     , sdl2-image
     , sdl2-ttf
@@ -82,10 +90,14 @@ test-suite apecs-sdl-gdk-test
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      apecs
+      HUnit
+    , QuickCheck
+    , apecs
     , apecs-sdl-gdk
     , base >=4.7 && <5
     , containers
+    , hspec
+    , hspec-contrib
     , sdl2
     , sdl2-image
     , sdl2-ttf
