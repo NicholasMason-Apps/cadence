@@ -22,6 +22,7 @@ import Data.Word (Word8)
 import GDK.Texture (RenTexture, TextureMap (..))
 import GDK.Font (RenText)
 import GHC.TypeLits (Nat)
+import qualified Data.Vector as V
 
 type FPS = Int
 
@@ -57,6 +58,12 @@ data Config = Config
 -- | Represents an entity that can be rendered
 data Renderable = RenderableTexture RenTexture
                 | RenderableText RenText
+                | Point RenPoint
+                | Points (V.Vector RenPoint)
+                | Line RenLine
+                | Lines (V.Vector RenLine)
+                | Rectangle RenRectangle
+                | FilledRectangle RenRectangle
                 deriving (Eq, Show)
 instance Component Renderable where type Storage Renderable = Map Renderable
 
