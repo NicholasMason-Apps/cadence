@@ -17,7 +17,8 @@ module GDK.Types (Config(..)
                  , TargetFPS(..)
                  , RenPoint(..)
                  , RenRectangle(..)
-                 , RenLine(..)) where
+                 , RenLine(..)
+                 , Camera(..)) where
 
 import qualified SDL
 import Apecs
@@ -61,26 +62,34 @@ data Config = Config
 data RenPoint = RenPoint
     { pointColour :: SDL.V4 Word8
     , pointLayer :: Int
+    , pointPos :: Position
     } deriving (Show, Eq)
 
 data RenLine = RenLine
-    { lineStart :: SDL.V2 Float
-    , lineEnd :: SDL.V2 Float
+    { lineStart :: Position
+    , lineEnd :: Position
     , lineColour :: SDL.V4 Word8
     , lineLayer :: Int
+    } deriving (Show, Eq)
+
+data RenConnectedLine = RenConnectedLine
+    { connLineColour :: SDL.V4 Word8
+    , connLineLayer :: Int
+    , connLinePoints :: V.Vector (Position)
     } deriving (Show, Eq)
 
 data RenRectangle = RenRectangle
     { rectSize :: SDL.V2 Float
     , rectColour :: SDL.V4 Word8
     , rectLayer :: Int
+    , rectPosition :: Position
     } deriving (Show, Eq)
 
 -- | Represents an entity that can be rendered
 data Renderable = Texture RenTexture
                 | Text RenText
                 | Points (V.Vector RenPoint)
-                | ConnectedLines (V.Vector RenPoint) -- ^ Draw a line between each consecutive point
+                | ConnectedLines (V.Vector RenConnectedLine) -- ^ Draw a line between each consecutive point
                 | SeparatedLines (V.Vector RenLine)
                 | Rectangles (V.Vector RenRectangle)
                 | FilledRectangles (V.Vector RenRectangle)
@@ -89,6 +98,13 @@ instance Component Renderable where type Storage Renderable = Map Renderable
 
 newtype Position = Position (SDL.V2 Float)
 instance Component Position where type Storage Position = Map Position
+
+newtype Camera = Camera (SDL.V2 Int)
+instance Semigroup Camera where
+    (Camera c1) <> (Camera c2) = Camera (c1 + c2)
+instance Monoid Camera where
+    mempty = Camera $ SDL.V2 0 0
+instance Component Camera where type Storage Camera = Global Camera
 
 newtype Time = Time Float deriving (Show, Eq, Num)
 instance Semigroup Time where

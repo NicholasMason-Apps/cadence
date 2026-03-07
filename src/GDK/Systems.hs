@@ -102,7 +102,7 @@ defaultConfig = Config
     }
 
 makeWorld' :: [Name] -> Q [Dec]
-makeWorld' cTypes = makeWorld "World" (cTypes ++ [''TextureMap, ''FontMap, ''Position, ''Time, ''Renderable, ''Renderer, ''Window])
+makeWorld' cTypes = makeWorld "World" (cTypes ++ [''TextureMap, ''FontMap, ''Position, ''Time, ''Renderable, ''Renderer, ''Window, ''Camera])
 
 stepAnimations :: forall w. 
                 (Has w IO Time

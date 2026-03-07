@@ -13,6 +13,7 @@ import Control.Monad.IO.Class (MonadIO)
 newtype FontMap = FontMap (Map.Map String TTF.Font)
 instance Component FontMap where type Storage FontMap = Map FontMap
 
+-- TODO: RENAME THESE
 data RenText = RenText
     { fontRef :: String
     , fontText :: String
