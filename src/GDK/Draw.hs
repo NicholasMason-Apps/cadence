@@ -5,7 +5,7 @@
 module GDK.Draw (draw, 
                 drawTexture, 
                 drawText,
-                drawConnectedLine,
+                drawConnectedLines,
                 drawLine,
                 drawPoint,
                 drawRect,
@@ -22,6 +22,8 @@ import qualified Data.Vector as V
 import qualified Data.Text as T
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
+import Control.Monad (when)
+import Foreign.C (CInt(CInt))
 
 {-|
 Draw all 'Renderable' entities onto their appropriate layer.
@@ -46,19 +48,19 @@ draw renderer fps = do
     let 
         isInView :: Position -> (Int,Int) -> Bool
         isInView (Position (SDL.V2 x y)) (w,h) = let
-                (vw,vh) = size
+                (SDL.V2 vw vh) = size
                 (SDL.V2 cx cy) = cam
-                leftInView = x <= cx + vw
-                rightInView = x + w >= cx
-                topInView = y <= cy + vh
-                bottomInView = y + h >= cy
+                leftInView = x <= fromIntegral cx + fromIntegral vw
+                rightInView = x + fromIntegral w >= fromIntegral cx
+                topInView = y <= fromIntegral cy + fromIntegral vh
+                bottomInView = y + fromIntegral h >= fromIntegral cy
             in
                 leftInView && rightInView && topInView && bottomInView   
     maxLayer <- cfold (\acc r -> case r of
         Texture t -> max acc (textureLayer t)
         Text t -> max acc (fontLayer t)
         Points ps -> max acc $ V.foldl' (\acc' p -> max acc' (pointLayer p)) 0 ps
-        ConnectedLines ls -> max acc $ V.foldl' (\acc' l -> max acc' (pointLayer l)) 0 ls
+        ConnectedLines ls -> max acc $ V.foldl' (\acc' l -> max acc' (connLineLayer l)) 0 ls
         SeparatedLines ls -> max acc $ V.foldl' (\acc' l -> max acc' (lineLayer l)) 0 ls
         Rectangles rs -> max acc $ V.foldl' (\acc' r' -> max acc' (rectLayer r')) 0 rs
         FilledRectangles rs -> max acc $ V.foldl' (\acc' r' -> max acc' (rectLayer r')) 0 rs) 0
@@ -69,11 +71,11 @@ draw renderer fps = do
         Texture t -> case Map.lookup (textureRef t) tm of
             Just td -> do
                 pos <- get e
-                info <- liftIO $ SDL.queryTexture t
+                info <- liftIO $ SDL.queryTexture (texture td)
                 let layerTex = layers V.! textureLayer t
                     w = fromIntegral $ SDL.textureWidth info
                     h = fromIntegral $ SDL.textureHeight info
-                when when (isInView pos (w,h)) $ do
+                when (isInView pos (w,h)) $ do
                     SDL.rendererRenderTarget renderer SDL.$= Just layerTex
                     drawTexture renderer td pos (animationFrame t)
             Nothing -> return () -- Texture not found, skip drawing
@@ -93,27 +95,27 @@ draw renderer fps = do
                 drawPoint renderer p) ps
         ConnectedLines ls -> V.mapM_ (\l -> do
             let layerTex = layers V.! connLineLayer l
-                inView = V.foldl' (\acc l -> acc || isInView l (0,0)) (connLinePoints l)
+                inView = V.foldl' (\acc l -> acc || isInView l (0,0)) False (connLinePoints l)
             when inView $ do 
                 SDL.rendererRenderTarget renderer SDL.$= Just layerTex
-                drawConnectedLine renderer l) ls
+                drawConnectedLines renderer l) ls
         SeparatedLines ls -> V.mapM_ (\l -> do
             let layerTex = layers V.! lineLayer l
                 (Position (SDL.V2 sx sy)) = lineStart l
                 (Position (SDL.V2 ex ey)) = lineEnd l
-            when (isInView (lineStart l) (sx-ex,sy-ey)) $ do
+            when (isInView (lineStart l) (round (sx - ex), round (sy - ey))) $ do
                 SDL.rendererRenderTarget renderer SDL.$= Just layerTex
                 drawLine renderer l) ls
         Rectangles rs -> V.mapM_ (\r' -> do
-            let layerTex = layers V.! rectlayer r'
+            let layerTex = layers V.! rectLayer r'
                 (SDL.V2 w h) = rectSize r'
-            when (isInView (rectPosition r') (w,h)) $ do
+            when (isInView (rectPosition r') (round w, round h)) $ do
                 SDL.rendererRenderTarget renderer SDL.$= Just layerTex
                 drawRect renderer r') rs
-        FilledRectangles rs -> V.mapM_ (\r '-> do
-            let layerTex = layers V.! rectlayer r'
+        FilledRectangles rs -> V.mapM_ (\r' -> do
+            let layerTex = layers V.! rectLayer r'
                 (SDL.V2 w h) = rectSize r'
-            when (isInView (rectPosition r') (w,h)) $ do
+            when (isInView (rectPosition r') (round w, round h)) $ do
                 SDL.rendererRenderTarget renderer SDL.$= Just layerTex
                 drawFilledRect renderer r') rs
     SDL.rendererRenderTarget renderer SDL.$= Nothing
@@ -124,7 +126,7 @@ draw renderer fps = do
 drawConnectedLines :: SDL.Renderer -> RenConnectedLine -> System w ()
 drawConnectedLines r cl = do
     SDL.rendererDrawColor r SDL.$= connLineColour cl
-    SDL.drawLines r (V.map (\p -> SDL.P $ round <$> p) connLinePoints cl)
+    SDL.drawLines r (V.map (\(Position p) -> SDL.P $ round <$> p) (connLinePoints cl))
 
 drawLine :: SDL.Renderer -> RenLine -> System w ()
 drawLine r l = do

@@ -17,6 +17,7 @@ module GDK.Types (Config(..)
                  , TargetFPS(..)
                  , RenPoint(..)
                  , RenRectangle(..)
+                 , RenConnectedLine(..)
                  , RenLine(..)
                  , Camera(..)) where
 
@@ -32,7 +33,7 @@ type FPS = Int
 
 data TargetFPS = VSync
                | Unlimited
-               | Limited Nat 
+               | Limited Nat
 
 -- | Configuration settings for the game upon initialisation
 data Config = Config
@@ -75,7 +76,7 @@ data RenLine = RenLine
 data RenConnectedLine = RenConnectedLine
     { connLineColour :: SDL.V4 Word8
     , connLineLayer :: Int
-    , connLinePoints :: V.Vector (Position)
+    , connLinePoints :: V.Vector Position
     } deriving (Show, Eq)
 
 data RenRectangle = RenRectangle
@@ -96,7 +97,7 @@ data Renderable = Texture RenTexture
                 deriving (Eq, Show)
 instance Component Renderable where type Storage Renderable = Map Renderable
 
-newtype Position = Position (SDL.V2 Float)
+newtype Position = Position (SDL.V2 Float) deriving (Show, Eq)
 instance Component Position where type Storage Position = Map Position
 
 newtype Camera = Camera (SDL.V2 Int)
