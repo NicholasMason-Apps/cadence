@@ -57,7 +57,7 @@ draw renderer fps = do
                 leftInView && rightInView && topInView && bottomInView   
     maxLayer <- cfold (\acc r -> case r of
         Texture t -> max acc (textureLayer t)
-        Text t -> max acc (fontLayer t)
+        Text t -> max acc (textLayer t)
         Point p -> max acc (pointLayer p)
         Line l -> max acc (lineLayer l)
         Rectangle r -> max acc (rectLayer r)
@@ -79,8 +79,8 @@ draw renderer fps = do
             Nothing -> return () -- Texture not found, skip drawing
         Text t -> case Map.lookup (fontRef t) fm of
             Just font -> do
-                let layerTex = layers V.! fontLayer t
-                (w,h) <- liftIO $ TTF.size font (T.pack $ fontText t)
+                let layerTex = layers V.! textLayer t
+                (w,h) <- liftIO $ TTF.size font (T.pack $ displayText t)
                 when (isInView pos (fromIntegral w, fromIntegral h)) $ do
                     SDL.rendererRenderTarget renderer SDL.$= Just layerTex
                     drawText renderer t font pos
@@ -156,7 +156,7 @@ drawTexture r (TextureData t _) (Position pos) _ = do
 -- | Draw text given its 'RenText', 'Font' and 'Position'
 drawText :: SDL.Renderer -> RenText -> TTF.Font -> Position -> System w ()
 drawText r t font (Position pos) = do
-    (tex, size) <- generateSolidText r font (fontColour t) (fontText t)
+    (tex, size) <- generateSolidText r font (textColour t) (displayText t)
     SDL.copy r tex Nothing (Just $ SDL.Rectangle (SDL.P (round <$> pos)) (fromIntegral <$> size))
     SDL.destroyTexture tex
 

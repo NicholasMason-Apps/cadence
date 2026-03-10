@@ -20,9 +20,9 @@ instance Component FontMap where type Storage FontMap = Global FontMap
 -- TODO: RENAME THESE
 data RenText = RenText
     { fontRef :: String
-    , fontText :: String
-    , fontColour :: TTF.Color
-    , fontLayer :: Int
+    , displayText :: String
+    , textColour :: TTF.Color
+    , textLayer :: Int
     } deriving (Show, Eq)
 
 -- | Load a font into the 'FontMap'
