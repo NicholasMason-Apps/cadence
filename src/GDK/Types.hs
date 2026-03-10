@@ -17,7 +17,6 @@ module GDK.Types (Config(..)
                  , TargetFPS(..)
                  , RenPoint(..)
                  , RenRectangle(..)
-                 , RenConnectedLine(..)
                  , RenLine(..)
                  , Camera(..)) where
 
@@ -63,37 +62,28 @@ data Config = Config
 data RenPoint = RenPoint
     { pointColour :: SDL.V4 Word8
     , pointLayer :: Int
-    , pointPos :: Position
     } deriving (Show, Eq)
 
 data RenLine = RenLine
-    { lineStart :: Position
-    , lineEnd :: Position
-    , lineColour :: SDL.V4 Word8
+    { lineColour :: SDL.V4 Word8
     , lineLayer :: Int
-    } deriving (Show, Eq)
-
-data RenConnectedLine = RenConnectedLine
-    { connLineColour :: SDL.V4 Word8
-    , connLineLayer :: Int
-    , connLinePoints :: V.Vector Position
+    , lineX :: Float -- ^ X coordinate of the line's ending point
+    , lineY :: Float -- ^ Y coordinate of the line's ending point
     } deriving (Show, Eq)
 
 data RenRectangle = RenRectangle
-    { rectSize :: SDL.V2 Float
+    { rectSize :: SDL.V2 Float -- ^ Width and height of the rectangle
     , rectColour :: SDL.V4 Word8
     , rectLayer :: Int
-    , rectPosition :: Position
     } deriving (Show, Eq)
 
 -- | Represents an entity that can be rendered
 data Renderable = Texture RenTexture
                 | Text RenText
-                | Points (V.Vector RenPoint)
-                | ConnectedLines (V.Vector RenConnectedLine) -- ^ Draw a line between each consecutive point
-                | SeparatedLines (V.Vector RenLine)
-                | Rectangles (V.Vector RenRectangle)
-                | FilledRectangles (V.Vector RenRectangle)
+                | Point RenPoint
+                | Line RenLine
+                | Rectangle RenRectangle
+                | FilledRectangle RenRectangle
                 deriving (Eq, Show)
 instance Component Renderable where type Storage Renderable = Map Renderable
 

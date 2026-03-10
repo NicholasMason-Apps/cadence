@@ -2,7 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module GDK.Systems (initialise, run, defaultConfig, makeWorld') where
+module GDK.Systems (initialise, run, defaultConfig, makeWorld', stepAnimations) where
 
 import Apecs
 import GDK.Types

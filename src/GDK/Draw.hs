@@ -5,7 +5,6 @@
 module GDK.Draw (draw, 
                 drawTexture, 
                 drawText,
-                drawConnectedLines,
                 drawLine,
                 drawPoint,
                 drawRect,
@@ -23,7 +22,6 @@ import qualified Data.Text as T
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Control.Monad (when)
-import Foreign.C (CInt(CInt))
 
 {-|
 Draw all 'Renderable' entities onto their appropriate layer.
@@ -36,7 +34,8 @@ draw :: forall w.
       , Get w IO Window
       , Get w IO Renderable
       , Get w IO FontMap
-      , Get w IO Camera)
+      , Get w IO Camera
+      , Get w IO Position)
       => SDL.Renderer
       -> FPS
       -> System w ()
@@ -46,31 +45,30 @@ draw renderer fps = do
     size <- SDL.get $ SDL.windowSize window
     Camera cam <- get global
     let 
-        isInView :: Position -> (Int,Int) -> Bool
+        isInView :: Position -> (Float,Float) -> Bool
         isInView (Position (SDL.V2 x y)) (w,h) = let
                 (SDL.V2 vw vh) = size
                 (SDL.V2 cx cy) = cam
                 leftInView = x <= fromIntegral cx + fromIntegral vw
-                rightInView = x + fromIntegral w >= fromIntegral cx
+                rightInView = x + w >= fromIntegral cx
                 topInView = y <= fromIntegral cy + fromIntegral vh
-                bottomInView = y + fromIntegral h >= fromIntegral cy
+                bottomInView = y + h >= fromIntegral cy
             in
                 leftInView && rightInView && topInView && bottomInView   
     maxLayer <- cfold (\acc r -> case r of
         Texture t -> max acc (textureLayer t)
         Text t -> max acc (fontLayer t)
-        Points ps -> max acc $ V.foldl' (\acc' p -> max acc' (pointLayer p)) 0 ps
-        ConnectedLines ls -> max acc $ V.foldl' (\acc' l -> max acc' (connLineLayer l)) 0 ls
-        SeparatedLines ls -> max acc $ V.foldl' (\acc' l -> max acc' (lineLayer l)) 0 ls
-        Rectangles rs -> max acc $ V.foldl' (\acc' r' -> max acc' (rectLayer r')) 0 rs
-        FilledRectangles rs -> max acc $ V.foldl' (\acc' r' -> max acc' (rectLayer r')) 0 rs) 0
+        Point p -> max acc (pointLayer p)
+        Line l -> max acc (lineLayer l)
+        Rectangle r -> max acc (rectLayer r)
+        FilledRectangle r -> max acc (rectLayer r)
+        ) 0
     layers <- V.replicateM maxLayer (SDL.createTexture renderer SDL.RGBA8888 SDL.TextureAccessTarget size)
     TextureMap tm <- get global
     FontMap fm <- get global
-    cmapM_ $ \(r, e) -> case r of
+    cmapM_ $ \(r, pos) -> case r of
         Texture t -> case Map.lookup (textureRef t) tm of
             Just td -> do
-                pos <- get e
                 info <- liftIO $ SDL.queryTexture (texture td)
                 let layerTex = layers V.! textureLayer t
                     w = fromIntegral $ SDL.textureWidth info
@@ -81,73 +79,59 @@ draw renderer fps = do
             Nothing -> return () -- Texture not found, skip drawing
         Text t -> case Map.lookup (fontRef t) fm of
             Just font -> do
-                pos <- get e
                 let layerTex = layers V.! fontLayer t
-                wh <- liftIO $ TTF.size font (T.pack $ fontText t)
-                when (isInView pos wh) $ do
+                (w,h) <- liftIO $ TTF.size font (T.pack $ fontText t)
+                when (isInView pos (fromIntegral w, fromIntegral h)) $ do
                     SDL.rendererRenderTarget renderer SDL.$= Just layerTex
                     drawText renderer t font pos
             Nothing -> return () -- Font not found, skip drawing
-        Points ps -> V.mapM_ (\p -> do
+        Point p -> do
             let layerTex = layers V.! pointLayer p
-            when (isInView (pointPos p) (0,0)) $ do
+            when (isInView pos (0,0)) $ do
                 SDL.rendererRenderTarget renderer SDL.$= Just layerTex
-                drawPoint renderer p) ps
-        ConnectedLines ls -> V.mapM_ (\l -> do
-            let layerTex = layers V.! connLineLayer l
-                inView = V.foldl' (\acc l -> acc || isInView l (0,0)) False (connLinePoints l)
-            when inView $ do 
-                SDL.rendererRenderTarget renderer SDL.$= Just layerTex
-                drawConnectedLines renderer l) ls
-        SeparatedLines ls -> V.mapM_ (\l -> do
+                drawPoint renderer p pos
+        Line l -> do
             let layerTex = layers V.! lineLayer l
-                (Position (SDL.V2 sx sy)) = lineStart l
-                (Position (SDL.V2 ex ey)) = lineEnd l
-            when (isInView (lineStart l) (round (sx - ex), round (sy - ey))) $ do
+            when (isInView pos (lineX l, lineY l)) $ do
                 SDL.rendererRenderTarget renderer SDL.$= Just layerTex
-                drawLine renderer l) ls
-        Rectangles rs -> V.mapM_ (\r' -> do
+                drawLine renderer l pos
+        Rectangle r' -> do
             let layerTex = layers V.! rectLayer r'
                 (SDL.V2 w h) = rectSize r'
-            when (isInView (rectPosition r') (round w, round h)) $ do
+            when (isInView pos (w,h)) $ do
                 SDL.rendererRenderTarget renderer SDL.$= Just layerTex
-                drawRect renderer r') rs
-        FilledRectangles rs -> V.mapM_ (\r' -> do
+                drawRect renderer r' pos
+        FilledRectangle r' -> do
             let layerTex = layers V.! rectLayer r'
                 (SDL.V2 w h) = rectSize r'
-            when (isInView (rectPosition r') (round w, round h)) $ do
+            when (isInView pos (w,h)) $ do
                 SDL.rendererRenderTarget renderer SDL.$= Just layerTex
-                drawFilledRect renderer r') rs
+                drawFilledRect renderer r' pos
     SDL.rendererRenderTarget renderer SDL.$= Nothing
     V.mapM_ (\t -> do
         SDL.copy renderer t Nothing Nothing
         SDL.destroyTexture t) layers
 
-drawConnectedLines :: SDL.Renderer -> RenConnectedLine -> System w ()
-drawConnectedLines r cl = do
-    SDL.rendererDrawColor r SDL.$= connLineColour cl
-    SDL.drawLines r (V.map (\(Position p) -> SDL.P $ round <$> p) (connLinePoints cl))
-
-drawLine :: SDL.Renderer -> RenLine -> System w ()
-drawLine r l = do
+drawLine :: SDL.Renderer -> RenLine -> Position -> System w ()
+drawLine r l (Position pos) = do
     SDL.rendererDrawColor r SDL.$= lineColour l
-    SDL.drawLine r (SDL.P $ round <$> lineStart l) (SDL.P $ round <$> lineEnd l)
+    SDL.drawLine r (SDL.P $ round <$> pos) (SDL.P $ round <$> SDL.V2 (lineX l) (lineY l))
 
-drawPoint :: SDL.Renderer -> RenPoint -> System w ()
-drawPoint r p = do
+drawPoint :: SDL.Renderer -> RenPoint -> Position -> System w ()
+drawPoint r p (Position pos) = do
     SDL.rendererDrawColor r SDL.$= pointColour p
-    SDL.drawPoint r (SDL.P $ round <$> pointPos p)
+    SDL.drawPoint r (SDL.P $ round <$> pos)
 
-drawRect :: SDL.Renderer -> RenRectangle -> System w ()
-drawRect r rect = do
+drawRect :: SDL.Renderer -> RenRectangle -> Position -> System w ()
+drawRect r rect (Position pos) = do
     SDL.rendererDrawColor r SDL.$= rectColour rect
-    SDL.drawRect r (SDL.Rectangle (SDL.P (round <$> rectPosition rect)) (round <$> rectSize rect))
+    SDL.drawRect r $ Just (SDL.Rectangle (SDL.P (round <$> pos)) (round <$> rectSize rect))
 
 
-drawFilledRect :: SDL.Renderer -> RenRectangle -> System w ()
-drawFilledRect r rect = do
+drawFilledRect :: SDL.Renderer -> RenRectangle -> Position -> System w ()
+drawFilledRect r rect (Position pos) = do
     SDL.rendererDrawColor r SDL.$= rectColour rect
-    SDL.fillRect r (SDL.Rectangle (SDL.P (round <$> rectPosition rect)) (round <$> rectSize rect))
+    SDL.fillRect r $ Just (SDL.Rectangle (SDL.P (round <$> pos)) (round <$> rectSize rect))
 
 {-|
 Draw a 'Texture' given its 'TextureData' and 'Position'
@@ -187,16 +171,3 @@ generateText r font f col str = do
     SDL.freeSurface surface
     (w,h) <- liftIO $ TTF.size font t
     return (tex, SDL.V2 w h)
-
-{-|
-A global component which stores in a Vector a 'Texture' for each render layer.
-The index of the vector corresponds to the render layer, so the texture at index 0 is the texture for render layer 0, and so on.
-Lower layers are drawn first, and therefore can appear behind higher layers.
-The texture for each layer is cleared at the start of each frame, and 'Renderables' are drawn onto the appropriate layer texture during the draw phase of the game loop.
--}
--- newtype RenderLayers = RenderLayers (V.Vector SDL.Texture)
--- instance Semigroup RenderLayers where
---     (RenderLayers q1) <> (RenderLayers q2) = RenderLayers (q1 V.++ q2)
--- instance Monoid RenderLayers where
---     mempty = RenderLayers V.empty
--- instance Component RenderLayers where type Storage RenderLayers = Global RenderLayers

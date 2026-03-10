@@ -43,6 +43,7 @@ library
     , apecs
     , base >=4.7 && <5
     , containers
+    , exceptions
     , hspec
     , hspec-contrib
     , sdl2
@@ -69,6 +70,7 @@ executable apecs-sdl-gdk-exe
     , apecs-sdl-gdk
     , base >=4.7 && <5
     , containers
+    , exceptions
     , hspec
     , hspec-contrib
     , sdl2
@@ -96,6 +98,7 @@ test-suite apecs-sdl-gdk-test
     , apecs-sdl-gdk
     , base >=4.7 && <5
     , containers
+    , exceptions
     , hspec
     , hspec-contrib
     , sdl2

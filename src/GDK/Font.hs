@@ -11,7 +11,11 @@ import Control.Monad.IO.Class (MonadIO)
 
 -- | Stores the SDL fonts loaded in the game, mapped by their identifiers
 newtype FontMap = FontMap (Map.Map String TTF.Font)
-instance Component FontMap where type Storage FontMap = Map FontMap
+instance Semigroup FontMap where
+    (FontMap m1) <> (FontMap m2) = FontMap (Map.union m1 m2)
+instance Monoid FontMap where
+    mempty = FontMap Map.empty
+instance Component FontMap where type Storage FontMap = Global FontMap
 
 -- TODO: RENAME THESE
 data RenText = RenText

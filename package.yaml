@@ -33,6 +33,7 @@ dependencies:
 - QuickCheck
 - HUnit
 - hspec-contrib
+- exceptions
 
 ghc-options:
 - -Wall
