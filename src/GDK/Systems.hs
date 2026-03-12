@@ -80,8 +80,10 @@ run w r window step eventHandler draw = do
                 elapsed = fromIntegral (perf - prevPerf) / fromIntegral freq * 1000
             runSystem (eventHandler payload) w
             runSystem (do
-                stepAnimations $ fromIntegral dt / 1000
-                step $ fromIntegral dt / 1000) w
+                let dt' = fromIntegral dt / 1000
+                modify global $ \(Time t) -> Time (t + dt')
+                stepAnimations dt'
+                step dt') w
             runSystem (do
                 c <- get global
                 liftIO $ SDL.rendererDrawColor r SDL.$= backgroundColor c) w

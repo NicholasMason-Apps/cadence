@@ -54,7 +54,7 @@ defaultConfig :: Config
 defaultConfig = Config
     { windowTitle = "GDK Game"
     , windowDimensions = (800, 600)
-    , backgroundColor = V4 0 0 0 255
+    , backgroundColor = V4 255 255 255 255
     , targetFPS = VSync
     , showFPS = Just "Roboto-Regular"
     }
