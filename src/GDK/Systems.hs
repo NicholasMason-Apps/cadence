@@ -59,7 +59,7 @@ run :: forall w.
      , Has w IO TextureMap
      , Get w IO Renderable
      , Get w IO Config)
-     => w -- ^ Initial world state
+     => w -- ^ World state
      -> SDL.Renderer -- ^ SDL renderer context
      -> SDL.Window -- ^ SDL window context
      -> (Float -> System w ()) -- ^ World step function

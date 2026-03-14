@@ -1,6 +1,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
+
 
 module GDK.Draw (draw, 
                 drawTexture, 
@@ -63,10 +65,16 @@ draw renderer fps = do
         Text t -> max acc (textLayer t)
         Point p -> max acc (pointLayer p)
         Line l -> max acc (lineLayer l)
-        Rectangle r -> max acc (rectLayer r)
-        FilledRectangle r -> max acc (rectLayer r)
+        Rectangle r' -> max acc (rectLayer r')
+        FilledRectangle r' -> max acc (rectLayer r')
         ) 0
-    layers <- V.replicateM maxLayer (SDL.createTexture renderer SDL.RGBA8888 SDL.TextureAccessTarget size)
+    layers <- V.replicateM (maxLayer + 1) (do
+        tex <- SDL.createTexture renderer SDL.RGBA8888 SDL.TextureAccessTarget size
+        SDL.textureBlendMode tex SDL.$= SDL.BlendAlphaBlend
+        SDL.rendererRenderTarget renderer SDL.$= Just tex
+        SDL.rendererDrawColor renderer SDL.$= SDL.V4 0 0 0 0
+        SDL.clear renderer
+        return tex)
     TextureMap tm <- get global
     FontMap fm <- get global
     cmapM_ $ \(r, pos) -> case r of
@@ -127,7 +135,7 @@ draw renderer fps = do
 drawLine :: SDL.Renderer -> RenLine -> Position -> System w ()
 drawLine r l (Position pos) = do
     SDL.rendererDrawColor r SDL.$= lineColour l
-    SDL.drawLine r (SDL.P $ round <$> pos) (SDL.P $ round <$> V2 (lineX l) (lineY l))
+    SDL.drawLine r (SDL.P $ round <$> pos) (SDL.P $ round <$> (pos + V2 (lineX l) (lineY l)))
 
 drawPoint :: SDL.Renderer -> RenPoint -> Position -> System w ()
 drawPoint r p (Position pos) = do

@@ -2,49 +2,40 @@ This document breaks down a very small game written using `apecs-sdl-gdk`. We wi
 
 With all that said, let's start writing some code! To start with, we will need some language extensions since Apecs makes use of a lot of extensions for its inner workings.
 
-```haskell
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeApplications           #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-```
+> {-# LANGUAGE DataKinds                  #-}
+> {-# LANGUAGE FlexibleContexts           #-}
+> {-# LANGUAGE FlexibleInstances          #-}
+> {-# LANGUAGE MultiParamTypeClasses      #-}
+> {-# LANGUAGE ScopedTypeVariables        #-}
+> {-# LANGUAGE TemplateHaskell            #-}
+> {-# LANGUAGE TypeApplications           #-}
+> {-# LANGUAGE TypeFamilies               #-}
+> {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 
 Next, we need some imports. To work with Apecs and create some game logic, we simply import Apecs directly
 
-```haskell
-import Apecs
-```
+> import Apecs
 
 Following this, we import `apecs-sdl-gdk`. The only thing to note here is that, since we will also reuse the `initialise` function name later on, we also import `GDK.Systems` qualified.
 
-```haskell
-import GDK.Systems hiding (initialise)
-import qualified GDK.Systems as GDK
-import GDK.Types
-import GDK.Draw
-```
+> import GDK.Systems hiding (initialise)
+> import qualified GDK.Systems as GDK
+> import GDK.Draw
+> import GDK.Types
 
 Next we want to import `linear` for working with multi-dimensional vectors.
 
-```haskell
-import Linear
-```
+> import Linear
 
 Finally, we will import TODO:
 
-```haskell
-import qualified Data.Set as Set
-import qualified SDL
-import Control.Monad (when, void)
-import System.Random
-import Data.Maybe (isJust)
-import Data.Foldable (foldl')
-```
+> import qualified Data.Set as Set
+> import qualified SDL
+> import Control.Monad (when, void)
+> import System.Random
+> import Data.Maybe (isJust)
+> import Data.Foldable (foldl')
 
 Now with the imports complete, we can define some Components needed for our game logic! If you are not familiar with the notion of an ECS, I would recommend reading the [Apecs paper](https://github.com/jonascarpay/apecs/blob/master/apecs/prepub.pdf) (as well as the other resources linked in the `README.md`) to get an understanding of how it works. In short, an ECS works by having you create Entities which inhabit the game world, and have tied to them a composition of Components which are used to represent properties of that entity. You then write Systems to manipulate all entities with a specific subset of components to write game logic.
 
@@ -60,240 +51,216 @@ We will also define a `Global` Component for the mouse's position and a `Set` to
 
 Finally, we will use `Unique` for storing our countdown timer. For our game, we will only ever need at most one timer at any given moment, making the `Unique` store a perfect candidate for its storage.
 
-```haskell
-data Turn = PlayerTurn | AITurn | Win | Reset | CheckWinPlayer | CheckWinAI deriving Show
-instance Semigroup Turn where
-    _ <> t2 = t2
-instance Monoid Turn where
-    mempty = PlayerTurn
-instance Component Turn where type Storage Turn = Global Turn
-
-data BoardEntry = Naught | Cross | Empty deriving (Show, Eq)
-instance Semigroup BoardEntry where
-    Empty <> b = b
-    b <> Empty = b
-    b <> _ = b
-
-newtype Board = Board [[BoardEntry]] deriving Show
-instance Semigroup Board where
-    b1 <> b2 = b1 <> b2
-instance Monoid Board where
-    mempty = Board $ [
-            [Empty, Empty, Empty],
-            [Empty, Empty, Empty],
-            [Empty, Empty, Empty]
-        ]
-instance Component Board where type Storage Board = Global Board
-
-newtype MousePosition = MousePosition (V2 Float)
-instance Semigroup MousePosition where
-    (MousePosition m1) <> (MousePosition m2) = MousePosition (m1 + m2)
-instance Monoid MousePosition where
-    mempty = MousePosition (V2 0 0) 
-instance Component MousePosition where type Storage MousePosition = Global MousePosition
-
-newtype MouseButtons = MouseButtons (Set.Set SDL.MouseButton)
-instance Semigroup MouseButtons where
-    (MouseButtons mbs1) <> (MouseButtons mbs2) = MouseButtons (mbs1 `Set.union` mbs2)
-instance Monoid MouseButtons where
-    mempty = MouseButtons Set.empty
-instance Component MouseButtons where type Storage MouseButtons = Global MouseButtons
-
-newtype Countdown = Countdown Float deriving (Show, Eq, Num)
-instance Component Countdown where type Storage Countdown = Unique Countdown 
-```
+> data Turn = PlayerTurn | AITurn | Win | Reset | CheckWinPlayer | CheckWinAI deriving Show
+> instance Semigroup Turn where
+>     _ <> t2 = t2
+> instance Monoid Turn where
+>     mempty = PlayerTurn
+> instance Component Turn where type Storage Turn = Global Turn
+> 
+> data BoardEntry = Naught | Cross | Empty deriving (Show, Eq)
+> instance Semigroup BoardEntry where
+>     Empty <> b = b
+>     b <> Empty = b
+>     b <> _ = b
+> 
+> newtype Board = Board [[BoardEntry]] deriving Show
+> instance Semigroup Board where
+>     b1 <> b2 = b1 <> b2
+> instance Monoid Board where
+>     mempty = Board $ [
+>             [Empty, Empty, Empty],
+>             [Empty, Empty, Empty],
+>             [Empty, Empty, Empty]
+>         ]
+> instance Component Board where type Storage Board = Global Board
+> 
+> newtype MousePosition = MousePosition (V2 Float)
+> instance Semigroup MousePosition where
+>     (MousePosition m1) <> (MousePosition m2) = MousePosition (m1 + m2)
+> instance Monoid MousePosition where
+>     mempty = MousePosition (V2 0 0) 
+> instance Component MousePosition where type Storage MousePosition = Global MousePosition
+> 
+> newtype MouseButtons = MouseButtons (Set.Set SDL.MouseButton)
+> instance Semigroup MouseButtons where
+>     (MouseButtons mbs1) <> (MouseButtons mbs2) = MouseButtons (mbs1 `Set.union` mbs2)
+> instance Monoid MouseButtons where
+>     mempty = MouseButtons Set.empty
+> instance Component MouseButtons where type Storage MouseButtons = Global MouseButtons
+> 
+> newtype Countdown = Countdown Float deriving (Show, Eq, Num)
+> instance Component Countdown where type Storage Countdown = Unique Countdown 
 
 With those Global Components out of the way, we can focus on storing the actual naughts and crosses to draw on the screen. Normally, this would require us to create new Components to store their positions, drawing data, etc., however `apecs-sdl-gdk` exposes a nice way to capture this for minimal effort. `apecs-sdl-gdk` exposes a `Renderable` sum type and a `Position` component, which are both stored in a Map. The actual definitions of both are shown below, and I will go into more detail about what they do alongside those definitions.
 
-```sourceCode haskell
-data RenTexture = RenTexture
-    { textureRef :: String
-    -- ^ Identifier for the texture to render
-    , textureLayer :: Int
-    -- ^ layer for draw order
-    , animationFrame :: Maybe Int
-    -- ^ Frame index for animations, if applicable
-    } deriving (Eq, Show)
-
-data RenText = RenText
-    { fontRef :: String
-    , displayText :: String
-    , textColour :: TTF.Color
-    , textLayer :: Int
-    } deriving (Show, Eq)
-
-data RenPoint = RenPoint
-    { pointColour :: V4 Word8
-    , pointLayer :: Int
-    } deriving (Show, Eq)
-
-data RenLine = RenLine
-    { lineColour :: V4 Word8
-    , lineLayer :: Int
-    , lineX :: Float -- ^ X coordinate of the line's ending point
-    , lineY :: Float -- ^ Y coordinate of the line's ending point
-    } deriving (Show, Eq)
-
-data RenRectangle = RenRectangle
-    { rectSize :: V2 Float -- ^ Width and height of the rectangle
-    , rectColour :: V4 Word8
-    , rectLayer :: Int
-    } deriving (Show, Eq)
-
--- | Represents an entity that can be rendered
-data Renderable = Texture RenTexture
-                | Text RenText
-                | Point RenPoint
-                | Line RenLine
-                | Rectangle RenRectangle
-                | FilledRectangle RenRectangle
-                deriving (Eq, Show)
-instance Component Renderable where type Storage Renderable = Map Renderable
-```
+< data RenTexture = RenTexture
+<     { textureRef :: String
+<     -- ^ Identifier for the texture to render
+<     , textureLayer :: Int
+<     -- ^ layer for draw order
+<     , animationFrame :: Maybe Int
+<     -- ^ Frame index for animations, if applicable
+<     } deriving (Eq, Show)
+< 
+< data RenText = RenText
+<     { fontRef :: String
+<     , displayText :: String
+<     , textColour :: TTF.Color
+<     , textLayer :: Int
+<     } deriving (Show, Eq)
+< 
+< data RenPoint = RenPoint
+<     { pointColour :: V4 Word8
+<     , pointLayer :: Int
+<     } deriving (Show, Eq)
+< 
+< data RenLine = RenLine
+<     { lineColour :: V4 Word8
+<     , lineLayer :: Int
+<     , lineX :: Float -- ^ X coordinate of the line's ending point
+<     , lineY :: Float -- ^ Y coordinate of the line's ending point
+<     } deriving (Show, Eq)
+< 
+< data RenRectangle = RenRectangle
+<     { rectSize :: V2 Float -- ^ Width and height of the rectangle
+<     , rectColour :: V4 Word8
+<     , rectLayer :: Int
+<     } deriving (Show, Eq)
+< 
+< -- | Represents an entity that can be rendered
+< data Renderable = Texture RenTexture
+<                 | Text RenText
+<                 | Point RenPoint
+<                 | Line RenLine
+<                 | Rectangle RenRectangle
+<                 | FilledRectangle RenRectangle
+<                 deriving (Eq, Show)
+< instance Component Renderable where type Storage Renderable = Map Renderable
 
 As you can see, the main type here is our Component `Renderable`. Renderable simply represents a single entity which is wanting to be drawn, and provides a Sum type accordingly to specify what it is you want to render. For `Point`, `Line`, `Rectangle`, and `FilledRectangle`, what they provide and use their respecitve `Ren...` types for is rather self-explanatory. However, for `Texture` and `Text`, is it a bit more nuanced. Both Texture and Text make use of a reference String, which is used as an identifier into the Global `TextureMap` and `FontMap` that `apecs-sdl-gdk` exposes respectively. The purpose of this is to conform to the flyweight design pattern, and reduce the memory load of games by removing any entities storing the same texture or font data. To interface with these and load textures/fonts into the game, `apecs-sdl-gdk` also exposes the two following functions:
 
-```sourceCode haskell
--- | Load a font into the 'FontMap'
-loadFont :: (..) => FilePath -> String -> Int -> SystemT w m ()
-loadFont path ident size = ...
-
--- | Loads a texture into the 'TextureMap' with an associated identifier and optional animation data
-loadTexture :: (..) => SDL.Renderer -> FilePath -> String -> Maybe Animation -> SystemT w m ()
-loadTexture r path ident anim = ...
-```
+< -- | Load a font into the 'FontMap'
+< loadFont :: (..) => FilePath -> String -> Int -> SystemT w m ()
+< loadFont path ident size = ...
+< 
+< -- | Loads a texture into the 'TextureMap' with an associated identifier and optional animation data
+< loadTexture :: (..) => SDL.Renderer -> FilePath -> String -> Maybe Animation -> SystemT w m ()
+< loadTexture r path ident anim = ...
 
 These functions handle the loading and storing of a Texture or Font for you, and if you pass an invalid file path, they will throw an error at runtime. 
 
 Whilst the Renderable Component handles a lot of the heavy lifting for you, there is one other Component needed to complete the rendering pipeline. This Component is a Position Component, which simply represents the 2D position of the entity within the game space. In `apecs-sdl-gdk` it is defined as the following:
 
-```sourceCode haskell
-newtype Position = Position (V2 Float) deriving (Show, Eq)
-instance Component Position where type Storage Position = Map Position
-```
+< newtype Position = Position (V2 Float) deriving (Show, Eq)
+< instance Component Position where type Storage Position = Map Position
 
 With these two Components, we form the two fundamental Components needed for the rendering pipeline of `apecs-sdl-gdk`, and is exposed as a single function `draw`. What `draw` does is it takes all entities which have a `Renderable` and `Position` component, and draws all the entities onto the game window, ensuring to apply the given colour and render it onto the correct layer. This means that all the rendering is done for you, and all you need to do is write game logic!
 
 Alongside the two most important Components, `Renderable` and `Position`, `apecs-sdl-gdk` also exposes some other Components which are important to know. These are all listed and explained below
 
-```sourceCode haskell
--- | Configuration settings for the game upon initialisation
-data Config = Config
-    {
-        windowTitle :: String, -- ^ Title of the game window
-        windowDimensions :: (Int, Int), -- ^ Width and height of the game window in pixels
-        backgroundColor :: V4 Word8, -- ^ Background color of the game window as an RGBA value
-        targetFPS :: TargetFPS, -- ^ Desired FPS for the game loop
-        showFPS :: Maybe String -- ^ Whether to display the current FPS on the screen, and if so, the font to use
-    }
-instance Semigroup Config where
-    _ <> c2 = c2
-instance Monoid Config where
-    mempty = defaultConfig
-instance Component Config where type Storage Config = Global Config 
-```
+< -- | Configuration settings for the game upon initialisation
+< data Config = Config
+<     {
+<         windowTitle :: String, -- ^ Title of the game window
+<         windowDimensions :: (Int, Int), -- ^ Width and height of the game window in pixels
+<         backgroundColor :: V4 Word8, -- ^ Background color of the game window as an RGBA value
+<         targetFPS :: TargetFPS, -- ^ Desired FPS for the game loop
+<         showFPS :: Maybe String -- ^ Whether to display the current FPS on the screen, and if so, the font to use
+<     }
+< instance Semigroup Config where
+<     _ <> c2 = c2
+< instance Monoid Config where
+<     mempty = defaultConfig
+< instance Component Config where type Storage Config = Global Config 
 
 `Config` is used to configure the game window, and is passed during initialisation, and then stored globally such that we can access it in the future if needed. We also expose a `defaultConfig`, which is as follows:
 
-```sourceCode haskell
-defaultConfig :: Config
-defaultConfig = Config
-    { windowTitle = "GDK Game"
-    , windowDimensions = (800, 600)
-    , backgroundColor = V4 255 255 255 255
-    , targetFPS = VSync
-    , showFPS = Just "Roboto-Regular"
-    }
-```
+< defaultConfig :: Config
+< defaultConfig = Config
+<     { windowTitle = "GDK Game"
+<     , windowDimensions = (800, 600)
+<     , backgroundColor = V4 255 255 255 255
+<     , targetFPS = VSync
+<     , showFPS = Just "Roboto-Regular"
+<     }
 
 Following `Config`, we also have these other `Global` Components
 
-```sourceCode haskell
-newtype Camera = Camera (V2 Int)
-instance Semigroup Camera where
-    (Camera c1) <> (Camera c2) = Camera (c1 + c2)
-instance Monoid Camera where
-    mempty = Camera $ V2 0 0
-instance Component Camera where type Storage Camera = Global Camera
-
-newtype Time = Time Float deriving (Show, Eq, Num)
-instance Semigroup Time where
-    (Time t1) <> (Time t2) = Time (t1 + t2)
-instance Monoid Time where
-    mempty = Time 0
-instance Component Time where type Storage Time = Global Time
-
-newtype Renderer = Renderer (Maybe SDL.Renderer)
-instance Semigroup Renderer where
-    (Renderer r1) <> (Renderer r2) = Renderer r1
-instance Monoid Renderer where
-    mempty = Renderer Nothing
-instance Component Renderer where type Storage Renderer = Global Renderer
-
-newtype Window = Window (Maybe SDL.Window)
-instance Semigroup Window where
-    (Window w1) <> (Window w2) = Window w1
-instance Monoid Window where
-    mempty = Window Nothing
-instance Component Window where type Storage Window = Global Window
-```
+< newtype Camera = Camera (V2 Int)
+< instance Semigroup Camera where
+<     (Camera c1) <> (Camera c2) = Camera (c1 + c2)
+< instance Monoid Camera where
+<     mempty = Camera $ V2 0 0
+< instance Component Camera where type Storage Camera = Global Camera
+< 
+< newtype Time = Time Float deriving (Show, Eq, Num)
+< instance Semigroup Time where
+<     (Time t1) <> (Time t2) = Time (t1 + t2)
+< instance Monoid Time where
+<     mempty = Time 0
+< instance Component Time where type Storage Time = Global Time
+< 
+< newtype Renderer = Renderer (Maybe SDL.Renderer)
+< instance Semigroup Renderer where
+<     (Renderer r1) <> (Renderer r2) = Renderer r1
+< instance Monoid Renderer where
+<     mempty = Renderer Nothing
+< instance Component Renderer where type Storage Renderer = Global Renderer
+< 
+< newtype Window = Window (Maybe SDL.Window)
+< instance Semigroup Window where
+<     (Window w1) <> (Window w2) = Window w1
+< instance Monoid Window where
+<     mempty = Window Nothing
+< instance Component Window where type Storage Window = Global Window
 
 `Camera` is used to store the x and y offset to apply to the renderer when drawing. An example of when you may want to use this is to lock the game window to always be centre on your player. `Time` is used to store the total accumulated time of the game. `Renderer` is used to store the SDL rendering context, and similarly `Window` is used to store the SDL window context.
 
 With all of our Components being defined, we need to create our Game World type. In Apecs, this works by doing `makeWorld "world" [..]`, however `apecs-sdl-gdk` exposes `makeWorld'`, which alongside your own Components, also initialises the game world to include the `apecs-sdl-gdk` specific components. Thus, we need to write the following:
 
-```haskell
-makeWorld' [''Turn, ''Board, ''MousePosition, ''MouseButtons, ''Countdown]
-```
+> makeWorld' [''Turn, ''Board, ''MousePosition, ''MouseButtons, ''Countdown]
 
 What this is doing is utilising [Template Haskell](https://wiki.haskell.org/Template_Haskell) to create a `World` data type at compile-time which includes all the necessary data class instances to define our game world within Apecs. If you want to see what this compiles to, you can do so [here](https://hackage.haskell.org/package/apecs-0.9.6/docs/Apecs.html#v:makeWorld).
 
 Finally, I like to define a type synonym around our World to make our lives ever so slightly easier
 
-```haskell
-type System' a = System World a
-```
+> type System' a = System World a
 
 Now with our World created, we can now start implementing our naughts-and-crosses game logic. We will first start by defining our Game's configuration.
 
-```haskell
-config :: Config
-config = defaultConfig { windowTitle = "Naughts and Crosses"
-                       , windowDimensions = (600,600)
-                       , showFPS = Nothing }
-```
+> config :: Config
+> config = defaultConfig { windowTitle = "Naughts and Crosses"
+>                        , windowDimensions = (600,600)
+>                        , showFPS = Nothing }
 
 The only notable configuration here is the window dimensions. For the sake of this toy example, we will make the entire window the naughts and crosses board, which means our mouse position will always be in one of the 9 sections of the board.
 
 Now we will start writing our first system!
 
-```haskell
-initialise :: System' ()
-initialise = do
-    let rly = RenLine { lineColour = V4 0 0 0 255, lineLayer = 0, lineX = 0, lineY = 600}
-        rlx = rly { lineY = 0, lineX = 600}
-    line1 <- newEntity (Line rly, Position (V2 200 0))
-    line2 <- newEntity (Line rly, Position (V2 400 0))
-    line3 <- newEntity (Line rlx, Position (V2 0 200))
-    void $ newEntity (Line rlx, Position (V2 0 400))
-```
+> initialise :: System' ()
+> initialise = do
+>     let rly = RenLine { lineColour = V4 0 0 0 255, lineLayer = 0, lineX = 0, lineY = 600}
+>         rlx = rly { lineY = 0, lineX = 600}
+>     line1 <- newEntity (Line rly, Position (V2 200 0))
+>     line2 <- newEntity (Line rly, Position (V2 400 0))
+>     line3 <- newEntity (Line rlx, Position (V2 0 200))
+>     void $ newEntity (Line rlx, Position (V2 0 400))
 
 `initialise`, as the name suggests, initialises what we need for our game world. Thanks to Apecs and us providing a `Monoid` instance, the initial state of all our `Global` stores is taken care of. Therefore, all we need to do is set up the visual game board by creating lines to be rendered. We make use of `apecs-sdl-gdk`'s `Renderable` Component as well as `Position` so that the rendering of the lines is completely handled for us by the rendering pipeline. The `Position` Component represent's the starting point of the line, and `lineX` and `lineY` represent the x and y offset respectively for the end point of the line. `newEntity` is Apecs' way of creating new entities within the game world with the given Components. It returns an Entity, which is just an integer, however in practice most of the time you won't need to interact with Entity values directly.
 
 Now let's define our main entry point into the game logic, our `step` function which will be called every frame to update the game world
 
-```haskell
-step :: Float -> System' ()
-step dt = do
-    t <- get global
-    case t of
-        PlayerTurn -> stepPlayer dt
-        AITurn -> stepAI dt
-        CheckWinPlayer -> stepCheckWin dt AITurn
-        CheckWinAI -> stepCheckWin dt PlayerTurn
-        Win -> stepWin dt
-        Reset -> stepReset dt
-```
+> step :: Float -> System' ()
+> step dt = do
+>     t <- get global
+>     case t of
+>         PlayerTurn -> stepPlayer dt
+>         AITurn -> stepAI dt
+>         CheckWinPlayer -> stepCheckWin dt AITurn
+>         CheckWinAI -> stepCheckWin dt PlayerTurn
+>         Win -> stepWin dt
+>         Reset -> stepReset dt
 
 Whilst this is not much code, it is still doing a good amount and is worth focusing on, specifically the use of `get global`. `get` is one of the ways to get Component data from a store. In this case, we are wanting to access our `Turn` Component, which is in a Global Store. Since Global stores are able to be queried using *any* entity (which in turn technically means Global components are shared across *all* entities), we are able to pass in any integer value into get and it will yield the correct Component from the Global Store. However, for the sake of readability, Apecs exposes `global`, which is simply defined as -1, and so we will be using that.
 
@@ -301,145 +268,135 @@ After getting our Turn component, we then pattern match on its value to step acc
 
 Before getitng to our turn-specific step functions, I want to introduce a helper to reduce the amount of code we will need to write.
 
-```haskell
-updateBoard :: Board -> Int -> Int -> BoardEntry -> System' ()
-updateBoard (Board b) r c t = do
-    let (l1,r1) = splitAt c b
-        (l2,r2) = splitAt r (head r1)
-        r2' = t : tail r2
-        r2'' = l2 ++ r2'
-        r1' = r2'' : tail r1
-        b' = l1 ++ r1'
-        x = 200 * fromIntegral r
-        y = 200 * fromIntegral c
-    case t of
-        Naught -> do
-           _ <- newEntity (Rectangle RenRectangle { rectSize = V2 100 100, rectColour = V4 0 0 0 255, rectLayer = 1 }, Position (V2 (x+50) (y+50)))
-           modify global $ \(_ :: Turn) -> CheckWinPlayer
-        Cross -> do
-            _ <-newEntity (Line RenLine { lineColour = V4 0 0 0 255, lineLayer = 1, lineX = 100, lineY = 100 }, Position (V2 (x+50) (y+50)))
-            _ <- newEntity (Line RenLine { lineColour = V4 0 0 0 255, lineLayer = 1, lineX = -100, lineY = 100}, Position (V2 (x + 150) (y+50)))
-            modify global $ \(_ :: Turn) -> CheckWinAI
-        Empty -> return ()
-    modify global $ \(Board _) -> Board b'
-```
+> updateBoard :: Board -> Int -> Int -> BoardEntry -> System' ()
+> updateBoard (Board b) r c t = do
+>     let (l1,r1) = splitAt c b
+>         (l2,r2) = splitAt r (head r1)
+>         r2' = t : tail r2
+>         r2'' = l2 ++ r2'
+>         r1' = r2'' : tail r1
+>         b' = l1 ++ r1'
+>         x = 200 * fromIntegral r
+>         y = 200 * fromIntegral c
+>     case t of
+>         Naught -> do
+>            _ <- newEntity (Rectangle RenRectangle { rectSize = V2 100 100, rectColour = V4 0 0 0 255, rectLayer = 1 }, Position (V2 (x+50) (y+50)))
+>            modify global $ \(_ :: Turn) -> CheckWinPlayer
+>         Cross -> do
+>             _ <-newEntity (Line RenLine { lineColour = V4 0 0 0 255, lineLayer = 1, lineX = 100, lineY = 100 }, Position (V2 (x+50) (y+50)))
+>             _ <- newEntity (Line RenLine { lineColour = V4 0 0 0 255, lineLayer = 1, lineX = -100, lineY = 100}, Position (V2 (x + 150) (y+50)))
+>             modify global $ \(_ :: Turn) -> CheckWinAI
+>         Empty -> return ()
+>     modify global $ \(Board _) -> Board b'
 
 `updateBoard` takes our current game board, a row and column index, and the tile we want to replace the existing one with, and replaces that tile whilst also creating new Entities with `Renderable` and `Position` components to make them visible. It also progresses our game state such that we check for a win afterwards.
 
 Now let's implement our turn-specific step functions. We will go top-down in our implementations.
 
-```haskell
-stepPlayer :: Float -> System' ()
-stepPlayer dt = do
-    MousePosition (V2 mx my) <- get global
-    MouseButtons mbs <- get global
-    (Board b) <- get global
-    let r = floor (mx / 200)
-        c = floor (my / 200)
-        t = (b !! c) !! r
-    case t of
-        Empty -> when (SDL.ButtonLeft `Set.member` mbs) $ updateBoard (Board b) r c Naught
-        _ -> return ()
-```
+> stepPlayer :: Float -> System' ()
+> stepPlayer dt = do
+>     MousePosition (V2 mx my) <- get global
+>     MouseButtons mbs <- get global
+>     (Board b) <- get global
+>     let r = floor (mx / 200)
+>         c = floor (my / 200)
+>         t = (b !! c) !! r
+>     case t of
+>         Empty -> when (SDL.ButtonLeft `Set.member` mbs) $ updateBoard (Board b) r c Naught
+>         _ -> return ()
 
 As an overview, `stepPlayer` gets our globally stored mouse position and currently pressed mouse buttons, accesses the current tile being hovered over by the mouse, and if the tile is empty and the left mouse button is currently pressed, then updates the board and switches the game's state to check the board for a potential win.
 
 The new thing here is `modify`. `modify` is a function used to update a single Component for a single Entity. In our case, we use `modify` to update our Global store for both our current `Turn` and our `Board`. Recall that for Global stores, the actual entity does not matter, and we simply use `global` as an alias for -1.
 
-```haskell
-stepAI :: Float -> System' ()
-stepAI dt = do
-    (Board b) <- get global
-    let getTile = do
-            n <- randomRIO (0,8) :: IO Int
-            let r = n `div` 3
-                c = n `mod` 3
-                r' = fromIntegral r
-                c' = fromIntegral c
-                t = (b !! c') !! r'
-            case t of
-                Empty -> return (r',c')
-                _ -> getTile
-    (r,c) <- liftIO getTile
-    updateBoard (Board b) r c Cross
-```
+> stepAI :: Float -> System' ()
+> stepAI dt = do
+>     (Board b) <- get global
+>     let getTile = do
+>             n <- randomRIO (0,8) :: IO Int
+>             let r = n `div` 3
+>                 c = n `mod` 3
+>                 r' = fromIntegral r
+>                 c' = fromIntegral c
+>                 t = (b !! c') !! r'
+>             case t of
+>                 Empty -> return (r',c')
+>                 _ -> getTile
+>     (r,c) <- liftIO getTile
+>     updateBoard (Board b) r c Cross
 
 `stepAI` introduces nothing that we have not seen before; it randomly generates an integer for an unoccupied tile, and updates the board. If you want to make a more sophisticated AI, go ahead!
 
-```haskell
-stepCheckWin :: Float -> Turn -> System' ()
-stepCheckWin dt t = do
-    (Board b) <- get global
-    let lines = [(0,1,2), (3,4,5), (6,7,8), (0,3,6), (1,4,7), (2,5,8), (0,4,8), (2,4,6)]
-        checkLine (Board b) (n1,n2,n3) 
-            | t1 == Naught && t2 == Naught && t3 == Naught = Just (n1,n2,n3)
-            | t1 == Cross && t2 == Cross && t3 == Cross = Just (n1,n2,n3)
-            | otherwise = Nothing
-            where
-                r1 = n1 `div` 3
-                c1 = n1 `mod` 3
-                r2 = n2 `div` 3
-                c2 = n2 `mod` 3
-                r3 = n3 `div` 3
-                c3 = n3 `mod` 3
-                t1 = (b !! c1) !! r1
-                t2 = (b !! c2) !! r2
-                t3 = (b !! c3) !! r3
-        isFull = Empty `notElem` concat b
-        line = foldl' (\acc l -> if isJust acc then acc else checkLine (Board b) l) Nothing lines
-    case line of
-        Just (n1,_,n3) -> do
-            let r1 = n1 `div` 3
-                c1 = n1 `mod` 3
-                r3 = n3 `div` 3
-                c3 = n3 `mod` 3
-                c1' = fromIntegral c1
-                c3' = fromIntegral c3
-                r1' = fromIntegral r1
-                r3' = fromIntegral r3
-            if c1' == c3' then
-                void $ newEntity (Line RenLine {lineColour = V4 255 0 0 255, 
-                                                lineLayer = 1,
-                                                lineX = 600,
-                                                lineY = 0 },
-                                                Position (V2 0 (200 * c1' + 100)))
-            else if r1' == r3' then
-                void $ newEntity (Line RenLine {lineColour = V4 255 0 0 255, 
-                                                lineLayer = 1,
-                                                lineX = 0,
-                                                lineY = 600 },
-                                                Position (V2 (200 * r1' + 100) 0))
-            else if (c1' > c3') then
-                void $ newEntity (Line RenLine {lineColour = V4 255 0 0 255, 
-                                                lineLayer = 1,
-                                                lineX = -600,
-                                                lineY = 600 },
-                                                Position (V2 600 0))
-            else
-                void $ newEntity (Line RenLine {lineColour = V4 255 0 0 255, 
-                                                lineLayer = 1,
-                                                lineX = 600,
-                                                lineY = 600 },
-                                                Position(V2 0 0))
-            _ <- newEntity (Countdown 3.0)
-            modify global $ \(_ :: Turn) -> Win
-        Nothing -> if isFull then do
-                _ <- newEntity (Countdown 3.0)
-                modify global $ \(_ :: Turn) -> Win
-            else
-                modify global $ \(_ :: Turn) -> t
-```
+> stepCheckWin :: Float -> Turn -> System' ()
+> stepCheckWin dt t = do
+>     (Board b) <- get global
+>     let lines = [(0,1,2), (3,4,5), (6,7,8), (0,3,6), (1,4,7), (2,5,8), (0,4,8), (2,4,6)]
+>         checkLine (Board b) (n1,n2,n3) 
+>             | t1 == Naught && t2 == Naught && t3 == Naught = Just (n1,n2,n3)
+>             | t1 == Cross && t2 == Cross && t3 == Cross = Just (n1,n2,n3)
+>             | otherwise = Nothing
+>             where
+>                 r1 = n1 `div` 3
+>                 c1 = n1 `mod` 3
+>                 r2 = n2 `div` 3
+>                 c2 = n2 `mod` 3
+>                 r3 = n3 `div` 3
+>                 c3 = n3 `mod` 3
+>                 t1 = (b !! c1) !! r1
+>                 t2 = (b !! c2) !! r2
+>                 t3 = (b !! c3) !! r3
+>         isFull = Empty `notElem` concat b
+>         line = foldl' (\acc l -> if isJust acc then acc else checkLine (Board b) l) Nothing lines
+>     case line of
+>         Just (n1,_,n3) -> do
+>             let r1 = n1 `div` 3
+>                 c1 = n1 `mod` 3
+>                 r3 = n3 `div` 3
+>                 c3 = n3 `mod` 3
+>                 c1' = fromIntegral c1
+>                 c3' = fromIntegral c3
+>                 r1' = fromIntegral r1
+>                 r3' = fromIntegral r3
+>             if c1' == c3' then
+>                 void $ newEntity (Line RenLine {lineColour = V4 255 0 0 255, 
+>                                                 lineLayer = 1,
+>                                                 lineX = 600,
+>                                                 lineY = 0 },
+>                                                 Position (V2 0 (200 * c1' + 100)))
+>             else if r1' == r3' then
+>                 void $ newEntity (Line RenLine {lineColour = V4 255 0 0 255, 
+>                                                 lineLayer = 1,
+>                                                 lineX = 0,
+>                                                 lineY = 600 },
+>                                                 Position (V2 (200 * r1' + 100) 0))
+>             else if (c1' > c3') then
+>                 void $ newEntity (Line RenLine {lineColour = V4 255 0 0 255, 
+>                                                 lineLayer = 1,
+>                                                 lineX = -600,
+>                                                 lineY = 600 },
+>                                                 Position (V2 600 0))
+>             else
+>                 void $ newEntity (Line RenLine {lineColour = V4 255 0 0 255, 
+>                                                 lineLayer = 1,
+>                                                 lineX = 600,
+>                                                 lineY = 600 },
+>                                                 Position(V2 0 0))
+>             _ <- newEntity (Countdown 3.0)
+>             modify global $ \(_ :: Turn) -> Win
+>         Nothing -> if isFull then do
+>                 _ <- newEntity (Countdown 3.0)
+>                 modify global $ \(_ :: Turn) -> Win
+>             else
+>                 modify global $ \(_ :: Turn) -> t
 
-`stepCheckWin` checks all possible locations for a complete line, and if so then creates a new line Entity for it along starting a timer of 3 seconds. If the board is full and no one has a line, then we just progress to the `Win` state to simulate the cooldown before wiping the board. For those that are straight lines, we offset them to be in the centre of the square. It is important to note that the axes for SDL, and by extension `apecs-sdl-gdk` increase to the right and incread downward for the x and y axes respectively.
+`stepCheckWin` checks all possible locations for a complete line, and if so then creates a new line Entity for it along starting a timer of 3 seconds. For those that are straight lines, we offset them to be in the centre of the square. It is important to note that the axes for SDL, and by extension `apecs-sdl-gdk` increase to the right and incread downward for the x and y axes respectively.
 
-```haskell
-stepWin :: Float -> System' ()
-stepWin dt = cmapM $ \(Countdown t) -> if t < 0
-    then do
-        modify global $ \(_ :: Turn) -> Reset
-        return $ Right $ Not @Countdown
-    else return $ Left $ Countdown (t-dt) 
-```
+> stepWin :: Float -> System' ()
+> stepWin dt = cmapM $ \(Countdown t) -> if t < 0
+>     then do
+>         modify global $ \(_ :: Turn) -> Reset
+>         return $ Right $ Not @Countdown
+>     else return $ Left $ Countdown (t-dt) 
 
 `stepWin` is where a lot of new Apecs concepts are introduced, and so we will focus a lot on this. `cmapM` is the first new Apecs concept. `cmap` is Apecs' form of `map`, and its functionality is dependent on the type of the function you provide.
 
@@ -447,15 +404,11 @@ For example, suppose we provide `cmap` a function of type `(Componment1,Componen
 
 As a result of this, when composing together components, for performance concerns it is important to include the most uniquely identifying component as the first component. For example, suppose we have a `Player`, `Enemy`, and `Position` component. In our game, we have only one player, but multiple enemies, and all of them have a `Position` component. If we wrote a cmap as follows:
 
-```sourceCode haskell
-cmap $ \(Position _, Player) -> ...
-```
+< cmap $ \(Position _, Player) -> ...
 
 That would be less efficient than
 
-```sourceCode haskell
-cmap $ \(Player, Position _) -> ...
-```
+< cmap $ \(Player, Position _) -> ...
 
 Since Apecs would be checking all Entities with a Position if they were a player, rather than checking just a single entity with Player if it had a Position component.
 
@@ -469,14 +422,12 @@ Let's start with `Either`. In Apecs, `Either a b` is used to represent two possi
 
 It is important to note that, when destroying an Entity, make sure to specify **all** the Entity's components. Failing to do so won't break your logic, but will mean you have components floating around in memory doing nothing as they are not attached to any entity.
 
-```haskell
-stepReset :: Float -> System' ()
-stepReset dt = do
-    cmap $ \(_ :: Renderable, Position _) -> (Nothing :: Maybe (Renderable, Position))
-    initialise
-    modify global $ \(_ :: Board) -> mempty :: Board
-    modify global $ \(_ :: Turn) -> PlayerTurn
-```
+> stepReset :: Float -> System' ()
+> stepReset dt = do
+>     cmap $ \(_ :: Renderable, Position _) -> (Nothing :: Maybe (Renderable, Position))
+>     initialise
+>     modify global $ \(_ :: Board) -> mempty :: Board
+>     modify global $ \(_ :: Turn) -> PlayerTurn
 
 `stepReset` simply deletes all entities with a `Renderable` component along with their `Position` component, and resets the board by using its `mempty`. Since this removes every Renderable entity, we then re-initialise the grid lines, and then give the player the turn to play. The way we delete components in `stepReset` is using `Maybe`. Since `Maybe` represents optionality, the `Just c` case results in writing the component `c` like normal, and `Nothing` results in it being deleted. However, this method is not ideal. This requires us to additionally read `Position`, which is unnecessary since we just want to delete it. Therefore, a better alternative would have been to use `Either` or `destroy`, however it shows the multiple ways in which things can be done.
 
@@ -484,41 +435,37 @@ As you have probably noticed, all our step functions take in a `Float` named `dt
 
 Now that we have written all of the systems needed for our game logic, we have two things left to do. The first is writing an event handler. In `apecs-sdl-gdk`, events are polled for you, and then passed onto your event handler as `[SDL.EventPayload]`. Therefore, if you want to see all the possible events that are polled and sent for handling, please refer to the [SDL Documentation](https://hackage.haskell.org/package/sdl2-2.5.5.0/docs/SDL-Event.html#t:EventPayload). Since SDL's `EventPayload` makes use of Sum types and records for capturing all possible event payload, we will make use of top-level pattern matching for our event handler functions
 
-```haskell
-handlePayload :: [SDL.EventPayload] -> System' ()
-handlePayload = mapM_ handleEvent
-
-handleEvent :: SDL.EventPayload -> System' ()
-handleEvent (SDL.MouseMotionEvent ev) = handleMouseMotionEvent ev
-handleEvent (SDL.MouseButtonEvent ev) = handleMouseButtonEvent ev
-handleEvent _ = return ()
-
-handleMouseMotionEvent :: SDL.MouseMotionEventData -> System' ()
-handleMouseMotionEvent ev = let
-        (SDL.P pos) = SDL.mouseMotionEventPos ev
-    in
-        modify global $ \(MousePosition _ ) -> MousePosition $ fromIntegral <$> pos
-
-handleMouseButtonEvent :: SDL.MouseButtonEventData -> System' ()
-handleMouseButtonEvent ev
-    | SDL.mouseButtonEventMotion ev == SDL.Pressed = modify global $ \(MouseButtons mbs) -> MouseButtons (Set.insert (SDL.mouseButtonEventButton ev) mbs)
-    | SDL.mouseButtonEventMotion ev == SDL.Released = modify global $ \(MouseButtons mbs) -> MouseButtons (Set.delete (SDL.mouseButtonEventButton ev) mbs)
-    | otherwise = return ()
-```
+> handlePayload :: [SDL.EventPayload] -> System' ()
+> handlePayload = mapM_ handleEvent
+> 
+> handleEvent :: SDL.EventPayload -> System' ()
+> handleEvent (SDL.MouseMotionEvent ev) = handleMouseMotionEvent ev
+> handleEvent (SDL.MouseButtonEvent ev) = handleMouseButtonEvent ev
+> handleEvent _ = return ()
+> 
+> handleMouseMotionEvent :: SDL.MouseMotionEventData -> System' ()
+> handleMouseMotionEvent ev = let
+>         (SDL.P pos) = SDL.mouseMotionEventPos ev
+>     in
+>         modify global $ \(MousePosition _ ) -> MousePosition $ fromIntegral <$> pos
+> 
+> handleMouseButtonEvent :: SDL.MouseButtonEventData -> System' ()
+> handleMouseButtonEvent ev
+>     | SDL.mouseButtonEventMotion ev == SDL.Pressed = modify global $ \(MouseButtons mbs) -> MouseButtons (Set.insert (SDL.mouseButtonEventButton ev) mbs)
+>     | SDL.mouseButtonEventMotion ev == SDL.Released = modify global $ \(MouseButtons mbs) -> MouseButtons (Set.delete (SDL.mouseButtonEventButton ev) mbs)
+>     | otherwise = return ()
 
 Finally, the only thing left to do is to write our `main` function to start our game. As mentioned, `apecs-sdl-gdk` exposes 3 main functions to streamline this. `initialise`, `run`, and `draw`. 
 - `initialise` is used to create the SDL window and renderer context, and needs your Apecs `World`
 - `run` is the main game loop, which takes the entry point for stepping your game world, your event handler, and a draw function
 - `draw` which is the default draw function, and handles the entire rendering pipeline for you by using all entities which have `Renderable` and `Position` components
 
-```haskell
-main :: IO ()
-main = do
-    w <- initWorld
-    runWith w initialise
-    (window, renderer) <- GDK.initialise w config
-    run w renderer window step handlePayload draw
-```
+> main :: IO ()
+> main = do
+>     w <- initWorld
+>     runWith w initialise
+>     (window, renderer) <- GDK.initialise w config
+>     run w renderer window step handlePayload draw
 
 And just like that, our game is complete!
 

@@ -29,11 +29,6 @@ dependencies:
 - containers
 - template-haskell
 - text
-- hspec
-- QuickCheck
-- HUnit
-- hspec-contrib
-- exceptions
 - linear
 
 ghc-options:
@@ -52,14 +47,15 @@ library:
 
 executables:
   apecs-sdl-gdk-exe:
-    main:                Main.hs
-    source-dirs:         app
+    main:                naughts-and-crosses.lhs
+    source-dirs:         examples
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
     - apecs-sdl-gdk
+    - random
 
 tests:
   apecs-sdl-gdk-test:
@@ -71,3 +67,8 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - apecs-sdl-gdk
+    - hspec
+    - QuickCheck
+    - HUnit
+    - hspec-contrib
+    - exceptions

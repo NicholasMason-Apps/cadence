@@ -38,14 +38,9 @@ library
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      HUnit
-    , QuickCheck
-    , apecs
+      apecs
     , base >=4.7 && <5
     , containers
-    , exceptions
-    , hspec
-    , hspec-contrib
     , linear
     , sdl2
     , sdl2-image
@@ -56,25 +51,21 @@ library
   default-language: Haskell2010
 
 executable apecs-sdl-gdk-exe
-  main-is: Main.hs
+  main-is: naughts-and-crosses.lhs
   other-modules:
       Paths_apecs_sdl_gdk
   autogen-modules:
       Paths_apecs_sdl_gdk
   hs-source-dirs:
-      app
+      examples
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      HUnit
-    , QuickCheck
-    , apecs
+      apecs
     , apecs-sdl-gdk
     , base >=4.7 && <5
     , containers
-    , exceptions
-    , hspec
-    , hspec-contrib
     , linear
+    , random
     , sdl2
     , sdl2-image
     , sdl2-ttf
