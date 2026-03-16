@@ -120,24 +120,25 @@ stepAnimations :: forall w.
                 -> System w ()
 stepAnimations dt = cmapM $ \r -> do
     case r of
-        Texture t -> do
-            Time t' <- get global
-            TextureMap m <- get global
-            let tex = textureRef t `Map.lookup` m
-            case tex of
-                Nothing -> return r
-                Just tex' -> case animation tex' of
-                        Just a -> do
-                            let trigger = floor (t' / frameSpeed a) /= floor ((t' + dt) / frameSpeed a)
-                            if trigger then do
-                                let frame = fromMaybe 0 (animationFrame t)
-                                    newFrame = (frame + 1) `mod` frameCount a
-                                if newFrame == 0 && next a /= "" then
-                                    return $ Texture t { textureRef = next a, animationFrame = Just 0 }
-                                else if newFrame == 0 then
-                                    return $ Texture t { animationFrame = Just frame }
-                                else
-                                    return $ Texture t { animationFrame = Just newFrame }
-                            else return r
-                        Nothing -> return r
+        Texture t -> if textureVisible t then do
+                Time t' <- get global
+                TextureMap m <- get global
+                let tex = textureRef t `Map.lookup` m
+                case tex of
+                    Nothing -> return r
+                    Just tex' -> case animation tex' of
+                            Just a -> do
+                                let trigger = floor (t' / frameSpeed a) /= floor ((t' + dt) / frameSpeed a)
+                                if trigger then do
+                                    let frame = fromMaybe 0 (animationFrame t)
+                                        newFrame = (frame + 1) `mod` frameCount a
+                                    if newFrame == 0 && next a /= "" then
+                                        return $ Texture t { textureRef = next a, animationFrame = Just 0 }
+                                    else if newFrame == 0 then
+                                        return $ Texture t { animationFrame = Just frame }
+                                    else
+                                        return $ Texture t { animationFrame = Just newFrame }
+                                else return r
+                            Nothing -> return r
+            else return r
         _ -> return r
