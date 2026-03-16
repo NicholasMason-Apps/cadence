@@ -22,6 +22,7 @@ data RenText = RenText
     , displayText :: String
     , textColour :: TTF.Color
     , textLayer :: Int
+    , textVisible :: Bool
     } deriving (Show, Eq)
 
 -- | Load a font into the 'FontMap'

@@ -46,7 +46,7 @@ library:
   source-dirs: src
 
 executables:
-  apecs-sdl-gdk-exe:
+  naughts-and-crosses:
     main:                naughts-and-crosses.lhs
     source-dirs:         examples
     ghc-options:
@@ -56,6 +56,21 @@ executables:
     dependencies:
     - apecs-sdl-gdk
     - random
+  hungeon:
+    main:                Main.hs
+    source-dirs:         examples/hungeon
+    ghc-options:
+    - -O2
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -with-rtsopts=--nonmoving-gc
+    dependencies:
+    - apecs-sdl-gdk
+    - random
+    - aeson
+    - bytestring
+    - random-shuffle
 
 tests:
   apecs-sdl-gdk-test:

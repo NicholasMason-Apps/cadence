@@ -54,7 +54,7 @@ initialise world config = do
     return (window, renderer)
 
 -- | Main game loop
-run :: forall w. 
+run :: forall w.
      (Has w IO Time
      , Has w IO TextureMap
      , Get w IO Renderable
@@ -93,7 +93,10 @@ run w r window step eventHandler draw = do
             runSystem (do
                 c <- get global
                 case targetFPS c of
-                    Limited fps -> SDL.delay $ floor ((1000 / fromIntegral fps) - elapsed)
+                    Limited fps -> let
+                            frameTime = 1000 / fromIntegral fps
+                            delayTime = max 0 (frameTime - elapsed)
+                        in SDL.delay $ floor delayTime
                     _ -> return ()) w
             unless quit $ loop ticks perf tickAcc' (fpsAcc + 1)
     loop 0 0 0 0
@@ -107,13 +110,13 @@ run w r window step eventHandler draw = do
 makeWorld' :: [Name] -> Q [Dec]
 makeWorld' cTypes = makeWorld "World" (cTypes ++ [''TextureMap, ''FontMap, ''Position, ''Time, ''Renderable, ''Renderer, ''Window, ''Camera, ''Config])
 
-stepAnimations :: forall w. 
+stepAnimations :: forall w.
                 (Has w IO Time
                 , Has w IO TextureMap
                 , Get w IO Renderable
                 , Set w IO Renderable
                 , Members w IO Renderable)
-                => Float 
+                => Float
                 -> System w ()
 stepAnimations dt = cmapM $ \r -> do
     case r of

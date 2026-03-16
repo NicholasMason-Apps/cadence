@@ -240,7 +240,7 @@ Now we will start writing our first system!
 
 > initialise :: System' ()
 > initialise = do
->     let rly = RenLine { lineColour = V4 0 0 0 255, lineLayer = 0, lineX = 0, lineY = 600}
+>     let rly = RenLine { lineColour = V4 0 0 0 255, lineLayer = 0, lineX = 0, lineY = 600, lineVisible = True}
 >         rlx = rly { lineY = 0, lineX = 600}
 >     line1 <- newEntity (Line rly, Position (V2 200 0))
 >     line2 <- newEntity (Line rly, Position (V2 400 0))
@@ -280,11 +280,11 @@ Before getitng to our turn-specific step functions, I want to introduce a helper
 >         y = 200 * fromIntegral c
 >     case t of
 >         Naught -> do
->            _ <- newEntity (Rectangle RenRectangle { rectSize = V2 100 100, rectColour = V4 0 0 0 255, rectLayer = 1 }, Position (V2 (x+50) (y+50)))
+>            _ <- newEntity (Rectangle RenRectangle { rectSize = V2 100 100, rectColour = V4 0 0 0 255, rectLayer = 1, rectVisible = True }, Position (V2 (x+50) (y+50)))
 >            modify global $ \(_ :: Turn) -> CheckWinPlayer
 >         Cross -> do
->             _ <-newEntity (Line RenLine { lineColour = V4 0 0 0 255, lineLayer = 1, lineX = 100, lineY = 100 }, Position (V2 (x+50) (y+50)))
->             _ <- newEntity (Line RenLine { lineColour = V4 0 0 0 255, lineLayer = 1, lineX = -100, lineY = 100}, Position (V2 (x + 150) (y+50)))
+>             _ <-newEntity (Line RenLine { lineColour = V4 0 0 0 255, lineLayer = 1, lineX = 100, lineY = 100, lineVisible = True }, Position (V2 (x+50) (y+50)))
+>             _ <- newEntity (Line RenLine { lineColour = V4 0 0 0 255, lineLayer = 1, lineX = -100, lineY = 100, lineVisible = True}, Position (V2 (x + 150) (y+50)))
 >             modify global $ \(_ :: Turn) -> CheckWinAI
 >         Empty -> return ()
 >     modify global $ \(Board _) -> Board b'
@@ -361,25 +361,29 @@ The new thing here is `modify`. `modify` is a function used to update a single C
 >                 void $ newEntity (Line RenLine {lineColour = V4 255 0 0 255, 
 >                                                 lineLayer = 1,
 >                                                 lineX = 600,
->                                                 lineY = 0 },
+>                                                 lineY = 0,
+>                                                 lineVisible = True },
 >                                                 Position (V2 0 (200 * c1' + 100)))
 >             else if r1' == r3' then
 >                 void $ newEntity (Line RenLine {lineColour = V4 255 0 0 255, 
 >                                                 lineLayer = 1,
 >                                                 lineX = 0,
->                                                 lineY = 600 },
+>                                                 lineY = 600,
+>                                                 lineVisible = True },
 >                                                 Position (V2 (200 * r1' + 100) 0))
 >             else if (c1' > c3') then
 >                 void $ newEntity (Line RenLine {lineColour = V4 255 0 0 255, 
 >                                                 lineLayer = 1,
 >                                                 lineX = -600,
->                                                 lineY = 600 },
+>                                                 lineY = 600,
+>                                                 lineVisible = True },
 >                                                 Position (V2 600 0))
 >             else
 >                 void $ newEntity (Line RenLine {lineColour = V4 255 0 0 255, 
 >                                                 lineLayer = 1,
 >                                                 lineX = 600,
->                                                 lineY = 600 },
+>                                                 lineY = 600,
+>                                                 lineVisible = True },
 >                                                 Position(V2 0 0))
 >             _ <- newEntity (Countdown 3.0)
 >             modify global $ \(_ :: Turn) -> Win

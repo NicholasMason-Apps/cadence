@@ -6,6 +6,7 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# LANGUAGE InstanceSigs #-}
 
 module GDK.Types (Config(..)
                  , Renderable(..)
@@ -24,7 +25,7 @@ module GDK.Types (Config(..)
 import qualified SDL
 import Apecs
 import Data.Word (Word8)
-import GDK.Texture (RenTexture, TextureMap (..))
+import GDK.Texture (RenTexture)
 import GDK.Font (RenText)
 import GHC.TypeLits (Nat)
 import Linear
@@ -79,6 +80,7 @@ defaultConfig = Config
 data RenPoint = RenPoint
     { pointColour :: V4 Word8
     , pointLayer :: Int
+    , pointVisible :: Bool
     } deriving (Show, Eq)
 
 -- | Represents a line to be rendered
@@ -87,6 +89,7 @@ data RenLine = RenLine
     , lineLayer :: Int
     , lineX :: Float -- ^ X coordinate of the line's ending point
     , lineY :: Float -- ^ Y coordinate of the line's ending point
+    , lineVisible :: Bool
     } deriving (Show, Eq)
 
 -- | Represents a rectangle to be rendered
@@ -94,6 +97,7 @@ data RenRectangle = RenRectangle
     { rectSize :: V2 Float -- ^ Width and height of the rectangle
     , rectColour :: V4 Word8
     , rectLayer :: Int
+    , rectVisible :: Bool
     } deriving (Show, Eq)
 
 -- | Represents an entity that can be rendered
@@ -109,12 +113,19 @@ instance Component Renderable where type Storage Renderable = Map Renderable
 newtype Position = Position (V2 Float) deriving (Show, Eq)
 instance Component Position where type Storage Position = Map Position
 
-newtype Camera = Camera (V2 Int)
+newtype Camera = Camera { camFunc :: V2 Float -> V2 Float }
 instance Semigroup Camera where
-    (Camera c1) <> (Camera c2) = Camera (c1 + c2)
+    (Camera f1) <> (Camera f2) = Camera $ \pos -> f1 (f2 pos)
 instance Monoid Camera where
-    mempty = Camera $ V2 0 0
+    mempty = Camera id
 instance Component Camera where type Storage Camera = Global Camera
+
+-- newtype Camera = Camera (V2 Int)
+-- instance Semigroup Camera where
+--     (Camera c1) <> (Camera c2) = Camera (c1 + c2)
+-- instance Monoid Camera where
+--     mempty = Camera $ V2 0 0
+-- instance Component Camera where type Storage Camera = Global Camera
 
 newtype Time = Time Float deriving (Show, Eq, Num)
 instance Semigroup Time where
@@ -125,14 +136,15 @@ instance Component Time where type Storage Time = Global Time
 
 newtype Renderer = Renderer (Maybe SDL.Renderer)
 instance Semigroup Renderer where
-    (Renderer r1) <> (Renderer r2) = Renderer r1
+    (Renderer r1) <> (Renderer _) = Renderer r1
 instance Monoid Renderer where
     mempty = Renderer Nothing
 instance Component Renderer where type Storage Renderer = Global Renderer
 
 newtype Window = Window (Maybe SDL.Window)
 instance Semigroup Window where
-    (Window w1) <> (Window w2) = Window w1
+    (<>) :: Window -> Window -> Window
+    (Window w1) <> (Window _) = Window w1
 instance Monoid Window where
     mempty = Window Nothing
 instance Component Window where type Storage Window = Global Window

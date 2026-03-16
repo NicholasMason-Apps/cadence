@@ -50,7 +50,44 @@ library
     , vector
   default-language: Haskell2010
 
-executable apecs-sdl-gdk-exe
+executable hungeon
+  main-is: Main.hs
+  other-modules:
+      Combat
+      Dungeon
+      Enemy
+      GameMap
+      Input
+      Menu
+      Settings
+      Systems
+      Types
+      Utils
+      Paths_apecs_sdl_gdk
+  autogen-modules:
+      Paths_apecs_sdl_gdk
+  hs-source-dirs:
+      examples/hungeon
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -O2 -threaded -rtsopts -with-rtsopts=-N -with-rtsopts=--nonmoving-gc
+  build-depends:
+      aeson
+    , apecs
+    , apecs-sdl-gdk
+    , base >=4.7 && <5
+    , bytestring
+    , containers
+    , linear
+    , random
+    , random-shuffle
+    , sdl2
+    , sdl2-image
+    , sdl2-ttf
+    , template-haskell
+    , text
+    , vector
+  default-language: Haskell2010
+
+executable naughts-and-crosses
   main-is: naughts-and-crosses.lhs
   other-modules:
       Paths_apecs_sdl_gdk
