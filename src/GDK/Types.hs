@@ -100,7 +100,7 @@ data RenRectangle = RenRectangle
     , rectVisible :: Bool
     } deriving (Show, Eq)
 
--- | Represents an entity that can be rendered
+-- | Component used to tag a single Entity with data for it to be rendered
 data Renderable = Texture RenTexture
                 | Text RenText
                 | Point RenPoint

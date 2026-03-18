@@ -46,8 +46,8 @@ library:
   source-dirs: src
 
 executables:
-  naughts-and-crosses:
-    main:                naughts-and-crosses.lhs
+  noughts-and-crosses:
+    main:                noughts-and-crosses.lhs
     source-dirs:         examples
     ghc-options:
     - -threaded

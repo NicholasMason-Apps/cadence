@@ -87,8 +87,8 @@ executable hungeon
     , vector
   default-language: Haskell2010
 
-executable naughts-and-crosses
-  main-is: naughts-and-crosses.lhs
+executable noughts-and-crosses
+  main-is: noughts-and-crosses.lhs
   other-modules:
       Paths_apecs_sdl_gdk
   autogen-modules:
