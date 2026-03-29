@@ -64,22 +64,6 @@ defaultConfig = Config
     , showFPS = Just "Roboto-Regular"
     }
 
--- data Render r = Render r
-
--- class Renderable r w where
---     render :: SDL.Renderer -> r -> System w ()
--- instance Renderable r w => Component (Render r) where type Storage (Render r) = Map (Render r)
-
-
--- class Component a => Renderable a where
---     render :: forall w. (Has w IO TextureMap) => SDL.Renderer -> Position -> a -> System w ()
-
--- data RenderableTexture = RenderableTexture RenTexture
--- instance Renderable RenderableTexture where
---     render r pos (RenderableTexture t) = do
---         TextureMap tm <- get global
---         return ()
-
 -- | Represents a point to be rendered
 data RenPoint = RenPoint deriving (Show, Eq)
 
