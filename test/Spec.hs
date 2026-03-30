@@ -101,7 +101,7 @@ main = hspec $ do
                 loadFont "test/resources/Roboto-Black.ttf" "testFont" 24
                 FontMap fm <- get global
                 liftIO $ Map.member "testFont" fm `shouldBe` True) w
-        it "Throws TTFException when loading a non-existent font" $ do
+        it "Throws SDLException when loading a non-existent font" $ do
             w <- initWorld
             _ <- initialise w testConfig
             runSystem (do
