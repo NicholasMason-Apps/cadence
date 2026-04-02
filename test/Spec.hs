@@ -28,13 +28,25 @@ testConfig = defaultConfig { windowTitle = "Test Window" }
 main :: IO ()
 main = hspec $ do
     describe "GDK.Systems.initialise" $ do
-        it "initialises SDL and creates a window and renderer" $ do
+        it "Initialises SDL and creates a window and renderer" $ do
             w <- initWorld
             (window, renderer) <- initialise w testConfig
             size <- SDL.get (SDL.windowSize window)
             size `shouldBe` SDL.V2 800 600
             title <- SDL.get (SDL.windowTitle window)
             title `shouldBe` T.pack "Test Window"
+            SDL.destroyRenderer renderer
+            SDL.destroyWindow window
+        it  "Programmer can adjust window size and renderer after initialisation" $ do
+            w <- initWorld
+            (window, renderer) <- initialise w testConfig
+            size <- SDL.get (SDL.windowSize window)
+            size `shouldBe` SDL.V2 800 600
+            title <- SDL.get (SDL.windowTitle window)
+            title `shouldBe` T.pack "Test Window"
+            SDL.windowSize window SDL.$= SDL.V2 1000 1000
+            size' <- SDL.get (SDL.windowSize window)
+            size' `shouldBe` SDL.V2 1000 1000
             SDL.destroyRenderer renderer
             SDL.destroyWindow window
     describe "GDK.Systems.stepAnimations" $ do
@@ -67,6 +79,20 @@ main = hspec $ do
                         Texture t -> Just t
                         _ -> acc) Nothing
                 liftIO $ en `shouldBe` (Just $ RenTexture { textureRef = "test2", animationFrame = Just 0 })) w
+        it "Holds the last frame when next = \"\"" $ do
+            w <- initWorld
+            (_, renderer) <- initialise w testConfig
+            tex <- SDL.createTexture renderer SDL.RGBA8888 SDL.TextureAccessStatic (SDL.V2 1 1)
+            let test = TextureData { texture = tex, animation = Just Animation { frameCount = 2, frameSpeed = 0.1, next = "test2" }}
+            runSystem (do
+                modify global $ \(TextureMap ts) -> TextureMap (Map.insert "test" test ts)
+                _ <- newEntity (Texture (RenTexture { textureRef = "test", animationFrame = Just 0 }), IsVisible True)
+                stepAnimations 0.1
+                stepAnimations 0.1
+                en <- cfold (\acc r -> case r of
+                        Texture t -> Just t
+                        _ -> acc) Nothing
+                liftIO $ en `shouldBe` (Just $ RenTexture { textureRef = "test", animationFrame = Just 1 })) w
     describe "GDK.Texture.loadTexture" $ do
         it "Loads a valid texture into the TextureMap" $ do
             w <- initWorld

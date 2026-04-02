@@ -19,3 +19,9 @@ Below are links to help people get familiar with the package and what it provide
 - [SDL2 hackage page](https://hackage.haskell.org/package/sdl2)
 - [SDL2 TTF hackage page](https://hackage.haskell.org/package/sdl2-ttf)
 - [SDL2 Image hackage page](https://hackage.haskell.org/package/sdl2-image)
+
+## Examples
+
+Two examples are currently bundled with Cadence. To run them, execute either of the following:
+- `stack run noughts-and-crosses`
+- `stack run hungeon`
