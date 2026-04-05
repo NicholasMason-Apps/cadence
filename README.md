@@ -4,7 +4,7 @@
 
 ## High-Level Overview
 
-Below is a high-level overview of what `cadence` currently provides:`
+Below is a high-level overview of what `cadence` currently provides:
 - Built-in rendering - through using a Type system and `apecs` Component system, users are able to avoid manually doing rendering calls in SDL by calling a single function to do it for them, allowing for layered rendering, camera manipulation, and more. This rendering is also optimised, such as employing frustum culling.
 - Automated frame handling and running of game loop - `cadence` exposes a `run` function which handles frame deltas, exact time deltas, and more to accurately run your game loop to the desired frame rate, with frame-independent time deltas.
 - Automated animation handling - textures simply need to be specified as an Animation, and `cadence` will handle the progressing of animations through sprite sheets for you, as well as the displaying of them during the rendering pipeline.
