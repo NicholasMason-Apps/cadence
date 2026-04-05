@@ -162,5 +162,6 @@ stepAnimations dt = cmapM $ \(r, e) -> do
             else return r
         _ -> return r
 
+-- | Checks if an entity hsa a component. If so, it returns that component in a Just. Otherwise, it returns Nothing
 getMaybe :: forall w m c. Get w m c => Entity -> Proxy c -> SystemT w m (Maybe c)
 getMaybe e p = exists e p >>= \y -> if y then Just <$> get e else return Nothing
